@@ -28,15 +28,15 @@ my version look'a'like:
 	
 	
 Fischgeeks TODO:
-	- Add ability to double-click open a file to that line number -> I can still do that
-	- Add progress bar - nearly SOLVED -> I integrated counters
-	- Add right-click context menu
-	- Add option to open file location
-	- Add Anchor() - THIS IS A MUST BE - I'm just pressing it
-	- Account for additional extensions - you mean .py?
-		...indexing? I currently have 13.000 Autohotkey scripts on the hard drive and your program is fast enough for me
-	- Possibly add an extension manager?
-	- Find an icon - SOLVED -> see above
-	- Add pre-search checks (extension selection, directory)
-	- Add finished notification (statusbar?) -> SOLVED - I used the window title
-	- Add auto saving of selected options and filters
+	- Add ability to double-click open a file to that line number -> I can still do that<br>
+	- Add progress bar - nearly SOLVED -> I integrated counters<br>
+	- Add right-click context menu<br>
+	- Add option to open file location<br>
+	- Add Anchor() - THIS IS A MUST BE - I'm just pressing it<br>
+	- Account for additional extensions - you mean .py?<br>
+		...indexing? I currently have 13.000 Autohotkey scripts on the hard drive and your program is fast enough for me<br>
+	- Possibly add an extension manager?<br>
+	- Find an icon - SOLVED -> see above<br>
+	- Add pre-search checks (extension selection, directory)<br>
+	- Add finished notification (statusbar?) -> SOLVED - I used the window title<br>
+	- Add auto saving of selected options and filters<br>
