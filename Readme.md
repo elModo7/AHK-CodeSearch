@@ -26,10 +26,7 @@ my version look'a'like:
 6. Stop/Resume Button is added - so the process can be interrupted even to start a new search
 	6.a. from fischgeek Todo -  Find an icon - i take your Github-Logo and it looks great!
 <br>
-<br>	
-	
 <h3>Fischgeeks TODO:</h3><br>
-<br>
 	- Add ability to double-click open a file to that line number -> I can still do that<br>
 	- Add progress bar - nearly SOLVED -> I integrated counters<br>
 	- Add right-click context menu<br>
