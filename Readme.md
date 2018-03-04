@@ -28,7 +28,7 @@ my version look'a'like:
 <br>
 <br>	
 	
-Fischgeeks TODO:<br>
+<h3>Fischgeeks TODO:</h3><br>
 <br>
 	- Add ability to double-click open a file to that line number -> I can still do that<br>
 	- Add progress bar - nearly SOLVED -> I integrated counters<br>
