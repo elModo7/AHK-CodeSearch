@@ -15,15 +15,14 @@ my version look'a'like:
 <div align="center"><img src="https://github.com/Ixiko/AHK-CodeSearch/blob/master/assets/Screenshot.png" alt="modified original AHK-CodeSearch Screenshot - Ixiko"></div>
 
 
-<b>I made the following modifications on 03.03.2018:</b>
-																	   		
+															   		
 1. Ready to enter the search string right after the start
 2. pressing Enter after entering the search string starts the search immediately
-3. the buttons R, W, C now show their long name																	V1.1
+3. the buttons R, W, C now show their long name																	V1.1 - 03.03.2018
 4. the window displays the number of files read so far and the number of digits found during the search process
 5. Font size and window size is adapted to 4k monitors (Size of Gui is huge - over 3000 pixel width) - at the moment, no resize or
 	any settings for the size of the contents is possible - i'm sorry for that
-					V1.2
+					V1.2 - 04.03.2018
 6. Stop/Resume Button is added - so the process can be interrupted even to start a new search
 	6.a. from fischgeek Todo -  Find an icon - i take your Github-Logo and it looks great!
 	
