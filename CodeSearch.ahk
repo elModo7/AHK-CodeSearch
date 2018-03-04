@@ -4,38 +4,51 @@
 ;--------------------------------------------						modified by Ixiko - look below for version 					 --------------------------------------------
 ;-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-version:= "03.03.2018"
+version:= "04.03.2018"
+vnumber:= 1.2
 
 /*																	   		the modification list
 
 				1. Ready to enter the search string right after the start
 				2. pressing Enter after entering the search string starts the search immediately
 				3. the buttons R, W, C now show their long name
+																	V1.1
 				4. the window displays the number of files read so far and the number of digits found during the search process
-				5. Font size and window size is adapted to 4k monitors
+				5. Font size and window size is adapted to 4k monitors (Size of Gui is huge - over 3000 pixel width) - at the moment, no resize or
+						any settings for the size of the contents is possible - i'm sorry for that
+																	V1.2
+				6. Stop/Resume Button is added - so the process can be interrupted even to start a new search
+						6.a. from fischgeek Todo -  Find an icon - i take yours and it looks great!
 
-
-	TODO:
-		- Add ability to double-click open a file to that line number
-		- Add progress bar
+	Fischgeeks TODO:
+		- Add ability to double-click open a file to that line number -> I can still do that
+		- Add progress bar - nearly SOLVED -> I integrated counters
 		- Add right-click context menu
 			- Add option to open file location
-		- Add Anchor()
-		- Account for additional extensions
+		- Add Anchor() - THIS IS A MUST BE - I'm just pressing it
+		- Account for additional extensions - you mean .py?
+				...indexing? I currently have 13.000 Autohotkey scripts on the hard drive and your program is fast enough for me
 		- Possibly add an extension manager?
-		- Find an icon
+		- Find an icon - SOLVED -> see above
 		- Add pre-search checks (extension selection, directory)
-		- Add finished notification (statusbar?)
+		- Add finished notification (statusbar?) -> SOLVED - I used the window title
 		- Add auto saving of selected options and filters
 
 File counter
 Files with search string
 
 */
+
+;{1. sript defaults - includes ----------------------------------------------------------------------------------------------------------------------------------------------------
+SetBatchLines, -1
 CoordMode, Pixel, Screen
 CoordMode, Mouse, Screen
 #Include Classes/Config.ahk
+Menu, Tray, Icon, CodeSearch.ico
+FileInstall, CodeSearch.ico
+;}
 
+;{2. variables -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ;maybe later for Resizefeature
 baserate = 1.8     ;(4k)
 WinsizeBase = 3000
@@ -49,11 +62,13 @@ wLineText = 895
 wLine = 100
 wPosition = 100
 
-
+StopIT = 0
 config := new Config()
+;}
 
+;{3. the Gui ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Gui, Color, White
-Gui, +Resize
+Gui, +Resize HwndhCSGui
 Gui, Font, s11, Segoe UI Light
 Gui, Add, Text,, % "Initial Directory:"
 Gui, Add, Edit, Section w300 h27 -Wrap vtxtInitialDirectory, % config.getValue("LastDir") ? config.getValue("LastDir") : ""
@@ -64,6 +79,7 @@ Gui, Add, Button, ys-1 hp+1 vbtnSearch gbtnSearch_Click, % "Search"
 Gui, Add, Checkbox, Section checked xm w120 h30 0x1000 vcbxRecurse, % "RECURSE"
 Gui, Add, Checkbox, ys wp hp 0x1000 vcbxWholeWord, % "WHOLE WORD"
 Gui, Add, Checkbox, ys wp hp 0x1000 vcbxCase, % "CASESENSITIVE"
+Gui, Add, Button, ys w200 hp 0x1000 Center vSearchStop gbtnSearchStop , % "STOP SEARCHING"
 Gui, Add, GroupBox, ym w500 h120, % "File Types"
 Gui, Add, Checkbox, yp+30 xp+15 Section checked vcbxAhk, % ".ahk"
 Gui, Add, Checkbox, ys vcbxHtml, % ".html"
@@ -82,6 +98,7 @@ Gui, Add, Text, xp yp+120 ,  % "      a script by Fishgeek"
 Gui, Add, Text,   xp yp+20 , %  "modified by Ixiko " version
 Gui, Font, s11, Consolas
 Gui, Add, ListView, xm w2000 r40 glvResults_Click vlvResults, % "File|Line Text|Line #|Position"
+GuiControl, Disable, Button6
 Gui, Show, AutoSize Center, Code Search
 
 LV_ModifyCol(1, wFile)
@@ -96,7 +113,9 @@ ControlClick, Edit2, ahk_id %WinID%,,,, NA x%cx%+5 y%cy%+5
 x:= cx+40, y:=cy+15
 DllCall("SetCursorPos", int, x, int, y)
 sleep, 2000
+;}
 
+;{4. Hotkey ----------------------------------------------------------------------------------------------------------------------------
 #IfWinActive Code Search
 
 	Enter::
@@ -109,13 +128,14 @@ sleep, 2000
 	return
 
 #IfWinActive
-
-
+;}
 
 return
+; End of AutoExec ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+;{5. Gui dialogs -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 btnDirectoryBrowse_Click:
-{
+;{
 	Gui, Submit, NoHide
 	FileSelectFolder, targetDir, *C:\, 3, % "Select a starting directory."
 	if (ErrorLevel) {
@@ -126,12 +146,34 @@ btnDirectoryBrowse_Click:
 		config.setValue(targetDir, "LastDir")
 	}
 	return
-}
+;}
+
+btnSearchStop:
+;{
+
+	If (StopIT = 0) {
+			StopIT = 1
+				ControlGetPos, csx, csy,,, Button6
+					csy-= 20
+						csx+= 30
+							;ToolTip, Process will stop soon..., %csx%, %csy%, 3
+				} else if (StopIT = 2) {
+						StopIT = 0
+						ControlSetText, Button6, % "STOP SEARCHING"
+						Goto, resume
+										}
+
+return
+;}
 
 btnSearch_Click:
-{
+;{
+	GuiControl, Enable, Button6
+	WinSetTitle, ahk_id %hCSGui%,, Code Search - I am searching
 	Gui, Submit, NoHide
 	LV_Delete()
+		ControlSetText, Static5, % "Files with search string: "
+		ControlSetText, Static6, % "      Searchstring found: "
 	keyword := txtSearchString
 	extensions := getExtensions()
 	recurse := 0
@@ -141,8 +183,19 @@ btnSearch_Click:
 	icount:= 0
 	ifiles:=0
 	isub:= 0
+	resume:
 	Loop, *.*,, %recurse%
 	{				;1L Start
+
+
+		if (StopIt = 1) {							;i want to have a stop and resume function -
+			StopIt = 2
+			ControlSetText, Button6, % "RESUME SEARCHING"
+			WinSetTitle, ahk_id %hCSGui%,, Code Search - searching ist stopped
+			ToolTip,,,,3
+			 return
+		}
+
 		if A_LoopFileAttrib contains H,S,R
 			continue
 		if A_LoopFileExt not in %extensions%
@@ -172,12 +225,15 @@ btnSearch_Click:
 
 		;isub:=0
 	}    ;1L End
-	WinSetTitle, Code Search,, Code Search
-	return
-}
+	WinSetTitle, ahk_id %hCSGui%,, Code Search - ready with searching
+	ControlSetText, Button6, % "STOP SEARCHING"
+	StopIT = 0
+	GuiControl, Disable, Button6
+return
+;}
 
 lvResults_Click:
-{
+;{
 	Gui, Submit, NoHide
 	dir := txtInitialDirectory
 	LV_GetText(fileName, A_EventInfo)
@@ -186,13 +242,16 @@ lvResults_Click:
 		Run C:\Program Files\AutoHotkey\SciTE\scite.exe  "%parameter%"
 
 return
-}
+;}
 
 GuiClose:
-{
+;{
 	ExitApp
-}
+;}
 
+;}
+
+;{6. Functions --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 listfunc(file){
 	fileread, z, % file
 	StringReplace, z, z, `r, , All			; important
@@ -253,3 +312,11 @@ getRegExOptions(caseSense) {
 	}
 	return options ")"
 }
+;}
+
+
+
+
+
+
+
