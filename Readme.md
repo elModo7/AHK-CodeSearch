@@ -1,8 +1,12 @@
-<div align="center" style="color:#243C5B;font-size:2.3rem;text-shadow:1px 1px 1px #426AA5,2px 2px 1px red;letter-spacing:2px;"><h1>AHK-CodeSearch</h1></div>
+![CodeSearchLogo](assets/CodeSearchLogo.svg)
+
+
+
 <div align="center" style="color:#1e2327"><h5>Original code from fishgeek / modified last on 09.09.2022 (V1.43) from Ixiko</h5></div>
 <div align="center" style="color:#000000"><h4>Original text from fischgeek's repository</h4></div>
 <div align="center"> Remember that bit of code you wrote, but can't remember exactly where you wrote it?<br>
 Try using this tool to target a directory and search for a keyword inside of your code files.</div><br>
+
 
 <div align="center"><h4>AHK-CodeSearch I have made for <a href="https://github.com/Ixiko/AHK-libs-and-classes-collection">[AHK-libs-and-classes-collection]</a></h4></div>
 
