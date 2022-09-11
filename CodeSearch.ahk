@@ -118,7 +118,6 @@ vnumber:= 1.44
 			thisDirLastMaxCount := config.getValue(txtInitialDirectory, "LastFilesInDir", 0)
 
 		dirs := GetLastDirs()
-		SciteOutput(dirs)
 
 	; richedit settings
 		Settings :=
@@ -346,7 +345,6 @@ vnumber:= 1.44
 	RC.ShowScrollBar(0, False)
 
 	GuiControl, Disable, SearchStop
-	GuiControl,, txtInitialDirectory, % lastDirectory
 	GuiControl, ChooseString, txtInitialDirectory, % lastDirectory
 	GuiControl, Focus, txtSearchString ;, % "ahk_id " hCSGui
 
@@ -408,7 +406,7 @@ btnDirectoryBrowse_Click:	;{
 	Gui, Submit, NoHide
 	startingPath := txtInitialDirectory && Instr(FileExist(txtInitialDirectory), "D") ? txtInitialDirectory : "*C:"
 
-	FileSelectFolder, targetDir, % startingPath "\", 3, % "Select a starting directory."
+	FileSelectFolder, targetDir, % startingPath "\", 1, % "Select a starting directory."
 	if !targetDir
 		return
 
@@ -814,11 +812,10 @@ GetLastDirs()                                                                 	{
 	lastDirs := ""
 	FileRead, tmpFile, % A_ScriptDir "\config.ini"
 	RegExMatch(StrReplace(tmpFile, "`r`n", "|"), "i)\[LastFilesInDir\](.*)", dir)
-	For itemNr, item in StrSplit(dir1, "|") {
-		dir := RegExReplace(A_LoopField, "\s*\=\s*\d+", "")
-		If Instr(FileExist(dir), "D")
-			lastDirs .= dir "|"
-	}
+	For itemNr, item in StrSplit(dir1, "|")
+		If Instr(FileExist(dir := RegExReplace(item, "\s*\=\s*\d+", "")), "D")
+			If !Instr(lastDirs, dir)
+				lastDirs .= dir "|"
 
 return LTrim(RTrim(lastDirs, "|"), "|")
 }
