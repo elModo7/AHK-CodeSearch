@@ -118,6 +118,7 @@ vnumber:= 1.44
 			thisDirLastMaxCount := config.getValue(txtInitialDirectory, "LastFilesInDir", 0)
 
 		dirs := GetLastDirs()
+		SciteOutput(dirs)
 
 	; richedit settings
 		Settings :=
@@ -310,15 +311,22 @@ vnumber:= 1.44
 	Gui, Add, Text        	, xs y+5                                                        	, % "Additional extension (ex. xml,cs,aspx)"
 	Gui, Add, Edit        	, w300 vtxtAdditionalExtensions
 
+	Gui, Font, s9, Segoe UI Light
 	GuiControlGet, p, Pos, GBFileTypes
 	x := pX+pW+10
 	Gui, Add, GroupBox, x%x% ym w380 h145 Center                            	, % "Statistics"
 	Gui, Add, Text, yp+30 xp+15 w180 Right Section                             	, % "File counter: "
+	Gui, Font, s9, Consolas
 	Gui, Add, Text, ys w100 	vStatCount                                               	, % SubStr("000000" icount, -3) "/" (StrLen(thisDirLastMaxCount) = 0 ? "" : SubStr("00000" thisDirLastMaxCount, -3))
+	Gui, Font, s9, Segoe UI Light
 	Gui, Add, Text, xs w180 Right Section vTFiles                                    	, % "Files with search string: "
+	Gui, Font, s9, Consolas
 	Gui, Add, Text, ys w100  	vStatFiles                                                  	, % ifiles
+	Gui, Font, s9, Segoe UI Light
 	Gui, Add, Text, xs w180 Right Section vTString                                  	, % "Searchstring found: "
+	Gui, Font, s9, Consolas
 	Gui, Add, Text, ys w100   vStatFound                                                	, % isub
+	Gui, Font, s9, Segoe UI Light
 	Gui, Add, Picture, x+10 ym w135 h130 gCSReload vCSReload        	, % A_ScriptDir "\assets\4293840.png"
 	Gui, Add, Text, xp yp+120                                                               	, % "            a script by Fishgeek"
 	Gui, Add, Text, xp yp+25                                                                 	, %  "modified by Ixiko V" vnumber " (" version ")"
@@ -345,6 +353,7 @@ vnumber:= 1.44
 	RC.ShowScrollBar(0, False)
 
 	GuiControl, Disable, SearchStop
+	GuiControl,, txtInitialDirectory, % lastDirectory
 	GuiControl, ChooseString, txtInitialDirectory, % lastDirectory
 	GuiControl, Focus, txtSearchString ;, % "ahk_id " hCSGui
 
@@ -406,7 +415,7 @@ btnDirectoryBrowse_Click:	;{
 	Gui, Submit, NoHide
 	startingPath := txtInitialDirectory && Instr(FileExist(txtInitialDirectory), "D") ? txtInitialDirectory : "*C:"
 
-	FileSelectFolder, targetDir, % startingPath "\", 1, % "Select a starting directory."
+	FileSelectFolder, targetDir, % startingPath "\", 3, % "Select a starting directory."
 	if !targetDir
 		return
 
@@ -812,10 +821,11 @@ GetLastDirs()                                                                 	{
 	lastDirs := ""
 	FileRead, tmpFile, % A_ScriptDir "\config.ini"
 	RegExMatch(StrReplace(tmpFile, "`r`n", "|"), "i)\[LastFilesInDir\](.*)", dir)
-	For itemNr, item in StrSplit(dir1, "|")
-		If Instr(FileExist(dir := RegExReplace(item, "\s*\=\s*\d+", "")), "D")
-			If !Instr(lastDirs, dir)
-				lastDirs .= dir "|"
+	For itemNr, item in StrSplit(dir1, "|") {
+		dir := RegExReplace(A_LoopField, "\s*\=\s*\d+", "")
+		If Instr(FileExist(dir), "D")
+			lastDirs .= dir "|"
+	}
 
 return LTrim(RTrim(lastDirs, "|"), "|")
 }
