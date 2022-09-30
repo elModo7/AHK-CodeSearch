@@ -303,11 +303,11 @@ vnumber:= 1.44
 	x := pX+pW+20
 	Gui, Add, GroupBox	, % "x" x " ym w435 h145 Center vGBFileTypes"	, % "File Types"
 	Gui, Add, Checkbox	, % "yp+30 xp+15 Section checked vcbxAhk" 		, % ".ahk"
-	Gui, Add, Checkbox	, ys vcbxHtml                                                 	, % ".html"
-	Gui, Add, Checkbox	, ys vcbxCss                                                   	, % ".css"
-	Gui, Add, Checkbox	, ys vcbxJs                                                     	, % ".js"
-	Gui, Add, Checkbox	, ys vcbxIni                                                    	, % ".ini"
-	Gui, Add, Checkbox	, ys vcbxTxt                                                    	, % ".txt"
+	Gui, Add, Checkbox	, ys vcbxHtml   BackgroundTrans                      	, % ".html"
+	Gui, Add, Checkbox	, ys vcbxCss     BackgroundTrans                       	, % ".css"
+	Gui, Add, Checkbox	, ys vcbxJs       BackgroundTrans                       	, % ".js"
+	Gui, Add, Checkbox	, ys vcbxIni      BackgroundTrans                       	, % ".ini"
+	Gui, Add, Checkbox	, ys vcbxTxt      BackgroundTrans                       	, % ".txt"
 	Gui, Add, Text        	, xs y+5                                                        	, % "Additional extension (ex. xml,cs,aspx)"
 	Gui, Add, Edit        	, w300 vtxtAdditionalExtensions
 
@@ -317,17 +317,17 @@ vnumber:= 1.44
 	Gui, Add, GroupBox, x%x% ym w380 h145 Center                            	, % "Statistics"
 	Gui, Add, Text, yp+30 xp+15 w180 Right Section                             	, % "File counter: "
 	Gui, Font, s9, Consolas
-	Gui, Add, Text, ys w100 	vStatCount                                               	, % SubStr("000000" icount, -3) "/" (StrLen(thisDirLastMaxCount) = 0 ? "" : SubStr("00000" thisDirLastMaxCount, -3))
+	Gui, Add, Text, ys w150 	vStatCount                                               	, % SubStr("000000" icount, -3) "/" (StrLen(thisDirLastMaxCount) = 0 ? "" : SubStr("00000" thisDirLastMaxCount, -3))
 	Gui, Font, s9, Segoe UI Light
 	Gui, Add, Text, xs w180 Right Section vTFiles                                    	, % "Files with search string: "
 	Gui, Font, s9, Consolas
-	Gui, Add, Text, ys w100  	vStatFiles                                                  	, % ifiles
+	Gui, Add, Text, ys w150  	vStatFiles                                                  	, % ifiles
 	Gui, Font, s9, Segoe UI Light
 	Gui, Add, Text, xs w180 Right Section vTString                                  	, % "Searchstring found: "
 	Gui, Font, s9, Consolas
-	Gui, Add, Text, ys w100   vStatFound                                                	, % isub
+	Gui, Add, Text, ys w150   vStatFound                                                	, % isub
 	Gui, Font, s9, Segoe UI Light
-	Gui, Add, Picture, x+10 ym w135 h130 gCSReload vCSReload        	, % A_ScriptDir "\assets\4293840.png"
+	Gui, Add, Picture, x+20 ym w135 h130 gCSReload vCSReload        	, % A_ScriptDir "\assets\4293840.png"
 	Gui, Add, Text, xp yp+120                                                               	, % "            a script by Fishgeek"
 	Gui, Add, Text, xp yp+25                                                                 	, %  "modified by Ixiko V" vnumber " (" version ")"
 
