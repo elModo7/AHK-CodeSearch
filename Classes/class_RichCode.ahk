@@ -53,26 +53,36 @@ class RichCode {
 
 			this.Settings := Settings
 
-		; add Gutter
-			if this.Settings.Gutter.Width{
-
-				GutterWidth := this.Settings.Gutter.Width
-
-				RegExMatch(Options, "i)x(?<X>\d+)" 	, opt)
-				RegExMatch(Options, "i)y(?<Y>\d+)" 	, opt)
-				RegExMatch(Options, "i)w(?<W>\d+)"	, opt)
-				RegExMatch(Options, "i)h(?<H>\d+)"	, opt)
-
-				Options:= RegExReplace(Options, "i)x\d+" 	, "x"	optX + GutterWidth)
-				Options:= RegExReplace(Options, "i)w\d+"	, "w"	optW - GutterWidth)
-
-				this.AddGutter(optX, optY, GutterWidth, optH)
-
+			if this.Settings.Gutter.Width {
+				deltaX := 12
+				RegExMatch(Options, "i)x(?<X>\d+)", rE)
+				RegExMatch(Options, "i)y(?<Y>\d+)", rE)
+				RegExMatch(Options, "i)w(?<W>\d+)", rE)
+				RegExMatch(Options, "i)h(?<H>\d+)", rE)
+				Options := RegExReplace(Options, "i)(x|w)\d+", " ")
+				Options := RegExReplace(Options, "\s{2,}", " ")
+				Options .= " x" reX+this.settings.gutter.Width+deltaX " w" reW-this.settings.gutter.Width-deltaX
+				this.gutter := Object()
+				this.gutter.X := reX+3
+				this.gutter.Y := reY
+				this.gutter.W := this.settings.gutter.Width
+				this.gutter.H := reH
 			}
 
 		; add RichEdit Control - for sourcecode
-			Gui, Add, Custom, % "ClassRichEdit50W vREC hWndhWnd +0x5031b1c4 -0x100000 " Options
+		; -------------------------------------------------------------------------------------------------------
+			Gui, Add, Custom, % "ClassRichEdit50W vREC hWndhWnd 0x503191C4 -E0x20000 " Options				; +0x5031b1c4 -0x100000
 			this.hWnd := hWnd
+			this.SetMargins(this.hWnd, 5, 5)
+
+		; add Gutter
+		; -------------------------------------------------------------------------------------------------------
+			if this.Settings.Gutter.Width{
+				this.AddGutter()
+				GuiControlGet, richC, Pos, % this.hWnd
+				GuiControlGet, gtr	, Pos, % this.gutter.hWnd
+				GuiControl, MoveDraw, % this.hWnd, % "x" gtrX+gtrW+1 " w" rEw-gtrW-1
+			}
 
 		; Enable WordWrap in RichEdit control ("WordWrap" : true)
 			if this.Settings.WordWrap
@@ -81,7 +91,7 @@ class RichCode {
 		; Register for WM_COMMAND and WM_NOTIFY events
 		; NOTE: this prevents garbage collection of the class until the control is destroyed
 			this.EventMask := 1                                   		; ENM_CHANGE
-			CtrlEvent       	 := this.CtrlEvent.Bind(this)
+			CtrlEvent := this.CtrlEvent.Bind(this)
 			GuiControl, +g, % hWnd, % CtrlEvent
 
 		; Set background color
@@ -91,34 +101,40 @@ class RichCode {
 		; Set character format
 			FGColor := this.BGRFromRGB(this.Settings.FGColor)
 			VarSetCapacity(CHARFORMAT2, 116, 0)
-			NumPut(116,                           	CHARFORMAT2, 0,        	"UInt")       	; cbSize         	= sizeof(CHARFORMAT2)
-			NumPut(0xE0000000,              	CHARFORMAT2, 4,        	"UInt")       	; dwMask      	= CFM_COLOR|CFM_FACE|CFM_SIZE
-			NumPut(FGColor,                    	CHARFORMAT2, 20,     	"UInt")       	; crTextColor 	= 0xBBGGRR
-			NumPut(Settings.Font.Size*20,  	CHARFORMAT2, 12,        	"UInt")       	; yHeight       	= twips
-			StrPut(Settings.Font.Typeface, 	&CHARFORMAT2+26, 32,"UTF-16")  	; szFaceName 	= TCHAR
-			this.SendMsg(0x444, 0,         	&CHARFORMAT2)                              	; EM_SETCHARFORMAT
+			NumPut(116,                    	CHARFORMAT2, 0,        	"UInt")       	; cbSize         	= sizeof(CHARFORMAT2)
+			NumPut(0xE0000000,            	CHARFORMAT2, 4,        	"UInt")       	; dwMask      	= CFM_COLOR|CFM_FACE|CFM_SIZE
+			NumPut(FGColor,                	CHARFORMAT2, 20,     	"UInt")       	; crTextColor 	= 0xBBGGRR
+			NumPut(Settings.Font.Size*20,  	CHARFORMAT2, 12,       	"UInt")       	; yHeight       	= twips
+			StrPut(Settings.Font.Typeface, 	&CHARFORMAT2+26, 32	,	"UTF-16")   	; szFaceName 	= TCHAR
+			this.SendMsg(0x444, 0,         	&CHARFORMAT2)                         	; EM_SETCHARFORMAT
 
 		; Set tab size to 4 for non-highlighted code
 			VarSetCapacity(TabStops, 4, 0), NumPut(Settings.TabSize*4, TabStops, "UInt")
-			this.SendMsg(0x0CB, 1, &TabStops)                                                   	; EM_SETTABSTOPS
+			this.SendMsg(0x0CB, 1, &TabStops)                                             	; EM_SETTABSTOPS
 
 		; Change text limit from 32,767 to max
-			this.SendMsg(0x435, 0, -1)                                                                  	; EM_EXLIMITTEXT
+			this.SendMsg(0x435, 0, -1)                                                     	; EM_EXLIMITTEXT
 
 		; Bind for keyboard events
 		; Use a pointer to prevent reference loop
-			this.OnMessageBound := this.OnMessage.Bind(&this)
-			OnMessage(0x100, this.OnMessageBound)                                        	; WM_KEYDOWN
-			OnMessage(0x20A, this.OnMessageBound)                                        	; WM_KEYDOWN
+			this.Bound := []
+			this.Bound.OnMessage 	:= this.OnMessage.Bind(this)
+			this.Bound.SyncGutter 	:= this.SyncGutter.Bind(this)
+			OnMessage(0x100, this.Bound.OnMessage)                                        	; WM_KEYDOWN
+			OnMessage(0x101, this.Bound.OnMessage)                                        	; WM_KEYUP
+			OnMessage(0x111, this.Bound.SyncGutter)                                        	; WM_KEYUP
+			OnMessage(0x400, this.Bound.SyncGutter)                                        	; WM_KEYUP
+			OnMessage(0x602, this.Bound.SyncGutter)                                        	; WM_KEYUP
+
 			If RButtonMenu
-				OnMessage(0x205, this.OnMessageBound)                                     	; WM_MouseWheel
+				OnMessage(0x204, this.Bound.OnMessage)                                     	; WM_RBUTTONDOWN
 
 		; Bind the highlighter
-			this.HighlightBound := this.Highlight.Bind(&this)
+			this.Bound.HighlightBound := this.Highlight.Bind(&this)
 
 		; Create the right click menu
 			this.MenuName	:= this.__Class . &this
-			RCMBound      	:= this.RightClickMenu.Bind(&this)
+			this.Bound.RCM 	:= RCMBound := this.RightClickMenu.Bind(&this)
 			for Index, Entry in this.MenuItems
 				Menu, % this.MenuName, Add, % Entry, % RCMBound
 
@@ -126,9 +142,9 @@ class RichCode {
 			VarSetCapacity(pIRichEditOle, A_PtrSize, 0)
 			this.SendMsg(0x43C, 0, &pIRichEditOle)                                               	; EM_GETOLEINTERFACE
 			this.pIRichEditOle     	:= NumGet(pIRichEditOle, 0, "UPtr")
-			this.IRichEditOle       	:= ComObject(9, this.pIRichEditOle, 1), ObjAddRef(this.pIRichEditOle)
+			this.IRichEditOle      	:= ComObject(9, this.pIRichEditOle, 1), ObjAddRef(this.pIRichEditOle)
 			this.pITextDocument 	:= ComObjQuery(this.IRichEditOle, this.IID_ITextDocument)
-			this.ITextDocument 	:= ComObject(9, this.pITextDocument, 1), ObjAddRef(this.pITextDocument)
+			this.ITextDocument  	:= ComObject(9, this.pITextDocument, 1), ObjAddRef(this.pITextDocument)
 
 	}
 	RightClickMenu(ItemName, ItemPos, MenuName)	{
@@ -449,122 +465,199 @@ class RichCode {
 
 		return Start . End
 	}
+	SetBorder(hWnd, Widths, Styles) { ; Set paragraph's borders
+      ; Borders are not displayed in RichEdit, so the call of this function has no visible result.
+      ; Even WordPad distributed with Win7 does not show them, but e.g. Word 2007 does.
+      ; Widths : Array of the 4 border widths in the range of 1 - 15 in order left, top, right, bottom; zero = no border
+      ; Styles : Array of the 4 border styles in the range of 0 - 7 in order left, top, right, bottom (see remarks)
+      ; Note:
+      ; The description on MSDN at http://msdn.microsoft.com/en-us/library/bb787942(v=vs.85).aspx is wrong!
+      ; To set borders you have to put the border width into the related nibble (4 Bits) of wBorderWidth
+      ; (in order: left (0 - 3), top (4 - 7), right (8 - 11), and bottom (12 - 15). The values are interpreted as
+      ; half points (i.e. 10 twips). Border styles are set in the related nibbles of wBorders.
+      ; Valid styles seem to be:
+      ;     0 : \brdrdash (dashes)
+      ;     1 : \brdrdashsm (small dashes)
+      ;     2 : \brdrdb (double line)
+      ;     3 : \brdrdot (dotted line)
+      ;     4 : \brdrhair (single/hair line)
+      ;     5 : \brdrs ? looks like 3
+      ;     6 : \brdrth ? looks like 3
+      ;     7 : \brdrtriple (triple line)
+      ; EM_SETPARAFORMAT = 0x0447, PFM_BORDER = 0x800
+      If !IsObject(Widths)
+         Return False
+      W := S := 0
+      For I, V In Widths {
+         If (V)
+            W |= V << ((A_Index - 1) * 4)
+         If Styles[I]
+            S |= Styles[I] << ((A_Index - 1) * 4)
+      }
+      PF2 := New This.PF2
+      PF2.Mask := 0x800
+      PF2.BorderWidth := W
+      PF2.Borders := S
+      SendMessage, 0x0447, 0, % PF2.PF2,, % "ahk_id " HWND
+
+	Return ErrorLevel
+   }
+	SetMargins(Hwnd, Left := "", Right := "")                   	{
+	   ; EM_SETMARGINS = 0x00D3 -> http://msdn.microsoft.com/en-us/library/bb761649(v=vs.85).aspx
+	   Set := 0 + (Left <> "") + ((Right <> "") * 2)
+	   Margins := (Left <> "" ? Left & 0xFFFF : 0) + (Right <> "" ? (Right & 0xFFFF) << 16 : 0)
+	   Return DllCall("User32.dll\SendMessage", "Ptr", HWND, "UInt", 0x00D3, "Ptr", Set, "Ptr", Margins, "Ptr")
+	}
+
 
 	; --- control style
-	AddMargins(x:=0, y:=0, w:=0, h:=0, gutter:=false) { 	; add margins in pixel size to RichCode control
+	AddMargins(x:=0, y:=0, w:=0, h:=0)         	{ 	; add margins in pixel size to RichCode control
 
       VarSetCapacity(RECT, 16, 0)
 
-      if !DllCall("GetClientRect", "UPtr", (gutter ? this.hgutter : this.hWnd ), "UPtr", &RECT, "UInt")
+      if !DllCall("GetClientRect", "UPtr", this.hWnd, "UPtr", &RECT, "UInt")
           throw Exception("Couldn't get RichEdit Client RECT")
 
-      NumPut(x	+ NumGet(RECT,  0	, "Int")	, RECT,     0, "Int")
-      NumPut(y 	+ NumGet(RECT,  4	, "Int")	, RECT,     4, "Int")
-      NumPut(w	+ NumGet(RECT,  8	, "Int")	, RECT,     8, "Int")
-      NumPut(h	+ NumGet(RECT, 12, "Int")	, RECT,   12, "Int")
+      NumPut(x	+ NumGet(RECT,  0, "Int"), RECT,  0, "Int")
+      NumPut(y 	+ NumGet(RECT,  4, "Int"), RECT,  4, "Int")
+      NumPut(w	+ NumGet(RECT,  8, "Int"), RECT,  8, "Int")
+      NumPut(h	+ NumGet(RECT, 12, "Int"), RECT, 12, "Int")
 
-      this.SendMsg(0xB3, 0, &RECT, gutter)
+      ;~ this.SendMsg(0xB3, 0, &RECT, this.hWnd)
+
+
+
 	}
-	AddGutter(X,Y,W,H)	{
+	AddGutter()	                            	{
 
 		f 	:= this.Settings.Font
 
+		x := this.gutter.X
+		y := this.gutter.Y
+		w := this.gutter.W
+		h := this.gutter.H
+
 		; Add the RichEdit control for the gutter
-		Gui, Add, Custom, % "ClassRichEdit50W hWndhGutter +0x5031b1c6 -HScroll -VScroll x" X " y" Y " w" W " h" H
-		this.hGutter := hGutter
+		Gui, Add, Custom, % "ClassRichEdit50W hWndhGutter 0x560108C6 -HScroll -VScroll x" X " y" Y " w" W " h" H " "
+		this.gutter.hWnd := hGutter
 
 		; Set the background and font settings
 		FGColor := this.BGRFromRGB(this.Settings.Gutter.FGColor)
 		BGColor := this.BGRFromRGB(this.Settings.Gutter.BGColor)
 
 		VarSetCapacity(CF2, 116, 0)
-		NumPut(116,     	     &CF2+ 0, "UInt")              	; cbSize          	= sizeof(CF2)
-		NumPut(0xE<<28,    &CF2+ 4, "UInt")              	; dwMask          = CFM_COLOR|CFM_FACE|CFM_SIZE
-		NumPut(f.Size*20,  	&CF2+12, "UInt")              	; yHeight         	= twips
-		NumPut(FGColor,    	&CF2+20, "UInt")              	; crTextColor 	= 0xBBGGRR
-		StrPut(f.Typeface, &CF2+26, 32, "UTF-16")         	; szFaceName 	= TCHAR
+		NumPut(116,         &CF2+ 0,     "UInt")              	; cbSize          	= sizeof(CF2)
+		NumPut(0xE<<28,     &CF2+ 4,     "UInt")              	; dwMask          = CFM_COLOR|CFM_FACE|CFM_SIZE
+		NumPut(f.Size*20,  	&CF2+12,     "UInt")              	; yHeight         	= twips
+		NumPut(FGColor,    	&CF2+20,     "UInt")              	; crTextColor 	= 0xBBGGRR
+		StrPut(f.Typeface,  &CF2+26, 32, "UTF-16")          	; szFaceName 	= TCHAR
 
-		this.SendMsg(0x444, 0, &CF2    	, true)        	; EM_SETCHARFORMAT
-		this.SendMsg(0x443, 0, BGColor	, true)        	; EM_SETBKGNDCOLOR
+		this.SendMsg(0x444, 0, &CF2    	, this.gutter.hWnd)        	; EM_SETCHARFORMAT
+		this.SendMsg(0x443, 0, BGColor	, this.gutter.hwnd)        	; EM_SETBKGNDCOLOR
 
-		this.AddMargins(3, 3, -3, 0, true)
+		this.SetBorder(this.gutter.hWnd, 5, 2)
+		this.SetMargins(this.gutter.hWnd, 0, 5)
 
 	}
-	SyncGutter()	{
+	SyncGutter()	                                	{
 
 		static BUFF, _ := VarSetCapacity(BUFF, 16, 0)
 
 		if !this.Settings.Gutter.Width
 			return
 
-		this.SendMsg(0x4E0, &BUFF, &BUFF+4) 	; EM_GETZOOM
-		this.SendMsg(0x4DD, 0, &BUFF+8) 	    	; EM_GETSCROLLPOS
+		this.SendMsg(0x4E0, &BUFF, &BUFF+4)                  	; EM_GETZOOM
+		this.SendMsg(0x4DD, 0    , &BUFF+8) 	            	; EM_GETSCROLLPOS
 
 		; Don't update the gutter unnecessarily
 		State := NumGet(BUFF, 0, "UInt") . NumGet(BUFF, 4, "UInt") . NumGet(BUFF, 8, "UInt") . NumGet(BUFF, 12, "UInt")
-		if (State == this.GutterState)
+		if (State == this.gutter.State)
 			return
+		this.gutter.State := State
 
-		NumPut(-1, BUFF, 8, "UInt") ; Don't sync horizontal position
+		NumPut(-1, BUFF, 8, "UInt")                         	; Don't sync horizontal position
 		Zoom := [NumGet(BUFF, "UInt"), NumGet(BUFF, 4, "UInt")]
-		this.PostMsg(0x4E1, Zoom[1], Zoom[2]	, true)     	; EM_SETZOOM
-		this.PostMsg(0x4DE, 0, &BUFF+8       	, true)		; EM_SETSCROLLPOS
+		this.PostMsg(0x4E1, Zoom[1], Zoom[2]	,  this.gutter.hWnd)     	; EM_SETZOOM
+		this.PostMsg(0x4DE, 0      , &BUFF+8  	,  this.gutter.hWnd)	    	; EM_SETSCROLLPOS
 		this.ZoomLevel := Zoom[1] / Zoom[2]
-		;if (this.ZoomLevel != this.LastZoomLevel)
-		;	SetTimer(this.Bound.GuiSize, -0), this.LastZoomLevel := this.ZoomLevel
 
-		this.GutterState := State
+		;~ if (this.ZoomLevel != this.LastZoomLevel)
+			;~ this.SetTimer(this.Bound.GuiSize, -0), this.LastZoomLevel := this.ZoomLevel
+
 	}
 
-
 	; --- Event Handlers ---
-	OnMessage(wParam, lParam, Msg, hWnd)	{
-		if !IsObject(this)
-			this := Object(this)
-		if (hWnd != this.hWnd)
-			return
+	OnMessage(wParam, lParam, Msg, hWnd)	        	{
 
-		if (Msg == 0x100) {                                                                              	; WM_KEYDOWN
-				if (wParam == GetKeyVK("Tab")) 	{
-						; Indentation
-						Selection := this.Selection
-						if GetKeyState("Shift")
-							this.IndentSelection(True)                                               	; Reverse
-						else if (Selection[2] - Selection[1])                                       	; Something is selected
-							this.IndentSelection()
-						else
-						{
-							; TODO: Trim to size needed to reach next TabSize
-							this.SelectedText := this.Settings.Indent
-							this.Selection[1] := this.Selection[2]                                	; Place cursor after
-						}
-						return False
-				}
-				else if (wParam == GetKeyVK("Escape"))                                     	; Normally closes the window
-						return False
-				else if (wParam == GetKeyVK("v") && GetKeyState("Ctrl"))
-				{
-						this.SelectedText := Clipboard                                             	; Strips formatting
-						this.Selection[1] := this.Selection[2]                                    	; Place cursor after
-						return False
-			}
+		Critical, off
+		Critical
+
+		cmd := wParam >> 16
+		SciTEOutput("cmd: " cmd ", " GetHex(lParam) " = " GetHex(this.hWnd))
+
+		;~ ToolTip, % "wParam: " GetHex(wParam) " = " cmd " (cmd)`nlParam: " GetHex(lParam) " = " GetHex(this.hWnd)  "`nMsg: " GetHex(Msg) "`nhwnd: " GetHex(hWnd)
+
+
+		if      (cmd == 0x111 && lParam == this.hWnd) 			{                                 	; An event that fires on scroll
+
+			SciteOutput("MSg " Msg ", " GetHex(hwnd))
+
+			this.SyncGutter()
+			; If the user is scrolling too fast it can cause some messages
+			; to be dropped. Set a timer to make sure that when the user stops
+			; scrolling that the line numbers will be in sync.
+			this.SetTimer(this.Bound.SyncGutter, -50)
+
 		}
-		else if (Msg == 0x205)       {                                                                   	; WM_RBUTTONUP
+		else if (Msg == 0x100)      	{                                  	; WM_KEYDOWN
+			if (wParam == GetKeyVK("Tab")) 	{
+				; Indentation
+				Selection := this.Selection
+				if GetKeyState("Shift")
+					this.IndentSelection(True)                                               	; Reverse
+				else if (Selection[2] - Selection[1])                                       	; Something is selected
+					this.IndentSelection()
+				else	{
+					; TODO: Trim to size needed to reach next TabSize
+					this.SelectedText := this.Settings.Indent
+					this.Selection[1] := this.Selection[2]                                	; Place cursor after
+				}
+				return False
+			}
+			else if (wParam == GetKeyVK("Escape"))                                     	; Normally closes the window
+				return False
+			else if (wParam == GetKeyVK("v") && GetKeyState("Ctrl")) {
+				this.SelectedText := Clipboard                                             	; Strips formatting
+				this.Selection[1] := this.Selection[2]                                    	; Place cursor after
+				return False
+			}
+			this.SyncGutter()
+		}
+		else if (Msg == 0x101)       	{                                	; WM_KEYUP
+			this.SyncGutter()
+		}
+		else if (Msg == 0x205)       	{                                	; WM_RBUTTONUP
 			Menu, % this.MenuName, Show
 			return False
 		}
-		else if (Msg == 0x20A)       {                                                                   	; WM_MouseWheel
+		else if (Msg == 0x20A)       	{                                  	; WM_MouseWheel
 			;~ SendInput, % (wParam = 0x780000 ? "{Up}" : "{Down}")
 		}
 	}
 	CtrlEvent(CtrlHwnd, GuiEvent, EventInfo, _ErrorLevel:="")	{
 		if (GuiEvent == "Normal" && EventInfo == 0x300)     {                       	; EN_CHANGE
 			; Delay until the user is finished changing the document
-			HighlightBound := this.HighlightBound
-			SetTimer, %HighlightBound%, % -Abs(this.Settings.HighlightDelay)
+			HighlightBound := this.Bound.HighlightBound
+			SetTimer, % HighlightBound, % -1*Abs(this.Settings.HighlightDelay)
 		}
-
-		RCHandler( A_GuiControlEvent, A_GuiEvent, A_EventInfo, this.GetCaretLine())
+		EvInfo := GetHex(A_EventInfo)
+		;~ ToolTip, %  A_GuiControl "(" GetHex(CtrlHwnd) " " _ErrorLevel "), "  A_GuiEvent ", " GetHex(A_EventInfo) ", " this.GetCaretLine(), 2000, 300, 4
+		If (EVInfo == "0x400" && this.hWnd == CtrlHwnd) {
+			this.SyncGutter()
+			this.SetTimer(this.Bound.SyncGutter, -50)
+		}
+		else
+			RCHandler( A_GuiControlEvent, A_GuiEvent, A_EventInfo, this.GetCaretLine())
 
 	}
 	Highlight(NewVal*)	{
@@ -700,7 +793,22 @@ class RichCode {
 			this.SendMsg(0x4DE, 0, &POINT) ; EM_SETSCROLLPOS
 
 	}
+	UpdateGutter() {
 
+		; Update the gutter to match the document
+		if this.Settings.Gutter.Width && this.gutter.hWnd	{
+			ControlGet, Lines, LineCount,,, % "ahk_id" this.hWnd
+			SciTEOutput("lines: " LineCount)
+			if (Lines != this.LineCount) {
+				Loop, % Lines
+					LineIndex .= A_Index "`n"
+				GuiControl,, % this.gutter.hWnd, % LineIndex
+				this.SyncGutter()
+				this.LineCount := Lines
+			}
+		}
+
+	}
 
 	; --- document object of the specified RichEdit control
 	GetDocObj(interface) {
@@ -725,15 +833,22 @@ class RichCode {
 
 
 	; --- Helper/Convenience Methods ---
-	SendMsg(Msg	, wParam, lParam, gutter:=false)	{
+	SendMsg(Msg	, wParam, lParam, hWnd:=0)	{
 		;SciTEOutput("sendmessage: " msg " to " (gutter ? "Gutter" : "Code"))
-		SendMessage, Msg, wParam, lParam,, % "ahk_id" (gutter ? this.hGutter : this.hWnd)
-		return ErrorLevel
+		SendMessage, Msg, wParam, lParam,, % "ahk_id" (hWnd ? hWnd : this.hWnd)
+	return ErrorLevel
 	}
-	PostMsg(Msg 	, wParam, lParam, gutter:=false)	{
-	PostMessage, Msg, wParam, lParam,, % "ahk_id " (gutter ? this.hGutter : this.hWnd)
+	PostMsg(Msg	, wParam, lParam, hWnd:=0)	{
+		PostMessage, Msg, wParam, lParam,, % "ahk_id " (hWnd ? hWnd : this.hWnd)
 	return ErrorLevel
 }
+	SetTimer(Label, Period)							{
+
+		If IsObject(Label) || IsFunc(Label) || IsLabel(Label)
+			try
+			  SetTimer, % Label, % Period
+
+	}
 
 		; --- Static Methods ---
 	BGRFromRGB(RGB)	{
@@ -747,6 +862,20 @@ class RichCode {
 
 		set {
 			this.Highlight(Value)
+
+			; Update the gutter to match the document
+			if this.Settings.Gutter.Width && this.gutter.hWnd	{
+				ControlGet, Lines, LineCount,,, % "ahk_id" this.hWnd
+				SciTEOutput("lines: " LineCount)
+				if (Lines != this.LineCount) {
+					Loop, % Lines
+						LineIndex .= A_Index "`n"
+					GuiControl,, % this.gutter.hWnd, % LineIndex
+					this.SyncGutter()
+					this.LineCount := Lines
+				}
+			}
+
 			return Value
 		}
 	}

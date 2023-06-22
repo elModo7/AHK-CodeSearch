@@ -3,20 +3,27 @@
 
 
 
-<div align="center" style="color:#1e2327"><h5>Original code from fishgeek / modified last on 09.09.2022 (V1.43) from Ixiko</h5></div>
+<div align="center" style="color:#1e2327"><h5>Original code from fishgeek / modified last on 23.06.2023 (V1.45) from Ixiko</h5></div>
 <div align="center" style="color:#000000"><h4>Original text from fischgeek's repository</h4></div>
 <div align="center"> Remember that bit of code you wrote, but can't remember exactly where you wrote it?<br>
 Try using this tool to target a directory and search for a keyword inside of your code files.</div><br>
 
+
 <div align="center"><h4>AHK-CodeSearch I have made for <a href="https://github.com/Ixiko/AHK-libs-and-classes-collection">[AHK-libs-and-classes-collection]</a></h4></div>
 
-<div align="center"><img src="assets/Screenshot-092022.png" alt="modified original AHK-CodeSearch Screenshot - Ixiko"></div>
+<div align="center"><img src="assets/Screenshot-062023.png" alt="modified original AHK-CodeSearch Screenshot - Ixiko"></div>
 
 #### ***<u>You still find bugs? Do you think there is still room for improvement? Then you are more than right!</u>***
 
 
 
 ## VERSION HISTORY
+
+### V1.45
+
+- Displaying line numbers
+- The colours of the rest of the gui have been adapted to the codestyle
+- Fixed incorrect behaviour when resizing the Treeview and RichCode controls
 
 ### V1.44		
 
