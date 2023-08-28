@@ -592,8 +592,10 @@ class RichCode {
 		Critical, off
 		Critical
 
-		cmd := wParam >> 16
-		SciTEOutput("cmd: " cmd ", " GetHex(lParam) " = " GetHex(this.hWnd))
+		cmd := wParam >> 16  ; HI-Word
+		cmdID :=  ( wParam & 0xFFFF ) ; ID from Low word
+		WinGetClass, cclass, % "ahk_id " this.hWnd
+		SciTEOutput("cmd: " cmdID ", " GetHex(lParam & 0xFFFF) " = " cclass)
 
 		;~ ToolTip, % "wParam: " GetHex(wParam) " = " cmd " (cmd)`nlParam: " GetHex(lParam) " = " GetHex(this.hWnd)  "`nMsg: " GetHex(Msg) "`nhwnd: " GetHex(hWnd)
 

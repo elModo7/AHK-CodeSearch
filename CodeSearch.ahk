@@ -1,20 +1,39 @@
-;-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-;--------------------------------------------						   Code Search - originally from fischgeek					 --------------------------------------------
-;-------------------------------------------- 				  https://github.com/fischgeek/AHK-CodeSearch                  --------------------------------------------
-;--------------------------------------------						modified by Ixiko - look below for version 					 --------------------------------------------
-;-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+;------------------------------------------------------------------------------------------------------------------------------------------------------
+;--------------------------------------------						  Code Search - originally from fischgeek					 --------------------------------------------
+;-------------------------------------------- 		 	    https://github.com/fischgeek/AHK-CodeSearch        --------------------------------------------
+;--------------------------------------------						modified by Ixiko - look below for version 				 --------------------------------------------
+;------------------------------------------------------------------------------------------------------------------------------------------------------
+;
+;		                  		A little promotion for Autohotkey:
+;		                  		Autohotkey no longer enjoys my main attention, but I have yet to find anything better for finding program code
+;		                  		on my computers than Fishgeek's codesearch program.  Other programs certainly achieve greater speed, but the
+;		                  		foundation Fishgeek has laid and the ease with which further code highlighting can be integrated are unique.
+;		                  		The nicest thing is how few resources an AHK script consumes in contrast to e.g. Python, and just copying the
+;		                  		entire Codesearch directory is enough to run the code.
+;
+;------------------------------------------------------------------------------------------------------------------------------------------------------
 
-version:= "2023-06-23"
-vnumber:= 1.45
+version:= "2023-08-28"
+vnumber:= 1.46
 
-/*										        		VERSION HISTORY
 
-																	V1.45
+/*										                		VERSION HISTORY
+
+
+
+                V1.46
+				- Now you can enter a list of directories in which to search. The script determines the file endings contained in each directory.
+					This allows you to include or exclude certain directories for the search to speed up the search.
+				- Empty chars like a 'c' or 'D' without anything else will be interpreted as device letter
+				- Highlighting for Python language and .ini files added (with hope it will work)
+				- additional file types can be entered and will included in search
+
+                V1.45
 				- added area for displaying line numbers
 				- the colours of the rest of the gui have been adapted to the codestyle
 				- fixed incorrect behaviour when resizing the Treeview and RichCode controls
 
-																	V1.44
+                V1.44
 				- Search in files and/or file names
 				- Added an RichCode (/Edit)-Control to show your found code highlighted
 				- class_RichCode.ahk got additional functions
@@ -24,7 +43,7 @@ vnumber:= 1.45
 				- The width of TreeView and RichEdit-Control can be adjusted with a mouse drag in the gap between both controls.
 				- Window position, size and the sizes of TreeView and RichCode control will be stored after closing the Gui.
 
-																	V1.3
+                V1.3
 				- Gui Resize for ListView control is working
 				- Showing the last number of files in directory
 				- Change the code to the coding conventions of AHK_L V 1.1.30.0
@@ -32,14 +51,14 @@ vnumber:= 1.45
 				- Pressing Enter after entering the search string starts the search immediately
 				- The buttons R, W, C now show their long names
 
-																	V1.2
+                V1.2
 				- Stop/Resume Button is added - so the process can be interrupted even to start a new search
 				- a. from fischgeek Todo -  Find an icon - i take yours and it looks great!
 
-																	V1.1
+                V1.1
 				- the window displays the number of files read so far and the number of digits found during the search process
 				- Font size and window size is adapted to 4k monitors (Size of Gui is huge - over 3000 pixel width) - at the moment, no resize or
-						any settings for the size of the contents is possible - i'm sorry for that
+				  any settings for the size of the contents is possible - i'm sorry for that
 
 	Fischgeeks TODO:
 		- Add ability to double-click open a file to that line number -> I can still do that
@@ -76,41 +95,49 @@ vnumber:= 1.45
 		global hCSGui, hTV, hTP, RC
 		global config, mFiles, TV, cbxCase, keyword, cbxWholeWord
 		global txtInitialDirectory, AHKPath, AHKEditor
+		global lastAdditionalExtensions, lastDirs
 
 		global hCursor1    	:= DllCall("LoadCursor", "Ptr", 0, "Ptr", 32644, "Ptr")
 		global hCursor2    	:= DllCall("LoadCursor", "Ptr", 0, "Ptr", 32512, "Ptr")
 		global SearchBuffer	:= Object()
-		global                  q	:= Chr(0x22)
-		global dbg            	:= false
+		global q           	:= Chr(0x22)
+		global dbg        	:= false
+		global ftypes       := [{"ext":"Ahk" , "fExt":".ahk,.ah2"	, "checked":0}
+												,   {"ext":"Html", "fExt":".html"    	, "checked":0}
+												, 	{"ext":"Css" , "fExt":".css"     	, "checked":0}
+												, 	{"ext":"Js"  , "fExt":".js"     	, "checked":0}
+												, 	{"ext":"Py"  , "fExt":".py"     	, "checked":0}
+												, 	{"ext":"Ini" , "fExt":".ini"     	, "checked":0}
+												, 	{"ext":"Txt" , "fExt":".txt"     	, "checked":0}]
 
 	; get default Autohotkey files editor
 		RegRead, EditWith, HKEY_CLASSES_ROOT\AutoHotkeyScript\Shell\Edit\Command
 		RegExMatch(EditWith, "[A-Z]\:[A-Za-z\pL\s\-_.\\\(\)]+", path)
 		SplitPath, A_AhkPath,, AHKPath
-		AHKEditor := path
-		config   	:= new Config()
+		AHKEditor         := path
+		config          	:= new Config()
 
 	;maybe later for Resizefeature
-		baserate              	:= 1.8     ;(4k)
+		baserate         	:= 1.8     ;(4k)
 		WinSizeBase      	:= 3000
-		GroupBoxBaseW	:= 500
-		GroupBoxBaseH 	:= 120
-		StaticTextBase    	:= 400
-		MarginX            	:= 10
-		MarginY            	:= 10
-		StopIT               	:= 0
-		icount               	:= 0
+		GroupBoxBaseW    	:= 500
+		GroupBoxBaseH    	:= 120
+		StaticTextBase   	:= 400
+		MarginX          	:= 10
+		MarginY          	:= 10
+		StopIT           	:= 0
+		icount           	:= 0
 		maxCount         	:= 0
 
 	;Column width's
-		wFile                 	:= 500
-		wLineText          	:= 495
-		wLine                	:= 100
-		wPosition	        	:= 100
+		wFile            	:= 500
+		wLineText        	:= 495
+		wLine            	:= 100
+		wPosition	      	:= 100
 
 	; load last window position and size
 		gP	:= GetSavedGuiPos(MarginX, MarginY)
-		TVw	:=  config.getValue("TV_Width", "Settings", 800)
+		TVw	:= config.getValue("TV_Width", "Settings", 800)
 		TVw	:= TVw < 600 ? 600 : TVw
 		TPw := isObject(gP) ? gP.W-TVw-5-(2*MarginX) :  600
 
@@ -118,11 +145,15 @@ vnumber:= 1.45
 		wF1 := TVw/gP.W
 		wF2	:= 1-wF1
 
-	; load last used search directory
-		If (lastDirectory := config.getValue("LastDir", "Settings", ""))
-			thisDirLastMaxCount := config.getValue(txtInitialDirectory, "LastFilesInDir", 0)
+	; load extensions settings
+		txtAdditionalExtensions := lastAdditionalExtensions := config.getValue("additionalExtensions", "Settings")
+		for each, ftype in ftypes {
+			ftype.checked := config.getValue(ftype.ext "_checked", "Settings", (ftype.ext = "Ahk" ? 1 : 0))
+			ftypeExtensions .= (ftypeExtensions ? ",":"") ftype.fExt
+		}
 
-		dirs := GetLastDirs()
+	; load last used search directories
+		lastdirs := GetLastDirs()
 
 	; richedit settings
 		Settings :=
@@ -135,38 +166,38 @@ vnumber:= 1.45
 		"GuiBGColor1"       	: "555453",
 		"GuiBGColor2"       	: "B8B7B6",
 		"Font"                	: {"Typeface": "Futura Bk Bt", "Size": 9},
-		"WordWrap"      	: false,
+		"WordWrap"          	: false,
 
 		"Gutter": {
 			;"Width"          	: 40,
-			"FGColor"     	: 0x9FAFAF,
-			"BGColor"     	: 0x262626
+			"FGColor"        	: 0x9FAFAF,
+			"BGColor"        	: 0x262626
 		},
 
-		"UseHighlighter"	: True,
-		"Highlighter"       	: "HighlightAHK",
-		"HighlightDelay"	: 200,
+		"UseHighlighter"   	: True,
+		"Highlighter"      	: "HighlightAHK",
+		"HighlightDelay"    	: 200,
 
 		"Colors": {
-			"Comments"  	:	0x9FBF9F,
-			"Functions"    	:	0x7CC8CF,
-			"Keywords"     	:	0xE4EDED,
+			"Comments"       	:	0x9FBF9F,
+			"Functions"      	:	0x7CC8CF,
+			"Keywords"       	:	0xE4EDED,
 			"Multiline"      	:	0x7F9F7F,
-			"Numbers"     	:	0xF79B57,
-			"Punctuation" 	:	0x97C0EB,
+			"Numbers"        	:	0xF79B57,
+			"Punctuation"    	:	0x97C0EB,
 			"Strings"        	:	0xCC9893,
 
 			; AHK
 			"A_Builtins"    	:	0xF79B57,
-			"Commands" 	:	0xCDBFA3,
+			"Commands"      	:	0xCDBFA3,
 			"Directives"    	:	0x7CC8CF,
-			"Flow"            	:	0xE4EDED,
-			"KeyNames"  	:	0xCB8DD9,
-			"Descriptions"	:	0xF0DD82,
-			"Link"            	:	0x47B856,
+			"Flow"           	:	0xE4EDED,
+			"KeyNames"      	:	0xCB8DD9,
+			"Descriptions"   	:	0xF0DD82,
+			"Link"           	:	0x47B856,
 
 			; PLAIN-TEXT
-			"PlainText" 		:	0x7F9F7F
+			"PlainText" 	  	:	0x7F9F7F
 			}
 		}
 		)
@@ -174,45 +205,45 @@ vnumber:= 1.45
 		Settings2 :=
 		( LTrim Join Comments
 		{
-		"TabSize"           	: 4,
-		"Indent"             	: "`t",
+		"TabSize"          	: 4,
+		"Indent"           	: "`t",
 		"FGColor"         	: 0xEDEDCD,
-		"BGColor"         	: 0x3F3F3F,
-		"GuiBGColor1"       	: "555453",
-		"GuiBGColor2"       	: "B8B7B6",
-		"Font"                	: {"Typeface": "Futura Bk Bt", "Size": 9},
-		"WordWrap"      	: false,
+		"BGColor"          	: 0x3F3F3F,
+		"GuiBGColor1"      	: "555453",
+		"GuiBGColor2"      	: "B8B7B6",
+		"Font"            	: {"Typeface": "Futura Bk Bt", "Size": 9},
+		"WordWrap"        	: false,
 
 		"Gutter": {
 			"Width"          	: 40,
-			"FGColor"     	: 0x9FAFAF,
-			"BGColor"     	: 0x262626
+			"FGColor"        	: 0x9FAFAF,
+			"BGColor"        	: 0x262626
 		},
 
-		"UseHighlighter"	: True,
-		"Highlighter"       	: "HighlightAHK",
-		"HighlightDelay"	: 200,
+		"UseHighlighter"   	: True,
+		"Highlighter"      	: "HighlightAHK",
+		"HighlightDelay"	  : 200,
 
 		"Colors": {
-			"Comments"  	:	0x9FBF9F,
-			"Functions"    	:	0x7CC8CF,
-			"Keywords"     	:	0xE4EDED,
+			"Comments"      	:	0x9FBF9F,
+			"Functions"     	:	0x7CC8CF,
+			"Keywords"      	:	0xE4EDED,
 			"Multiline"      	:	0x7F9F7F,
-			"Numbers"     	:	0xF79B57,
-			"Punctuation" 	:	0x97C0EB,
+			"Numbers"        	:	0xF79B57,
+			"Punctuation"    	:	0x97C0EB,
 			"Strings"        	:	0xCC9893,
 
 			; AHK
 			"A_Builtins"    	:	0xF79B57,
-			"Commands" 	:	0xCDBFA3,
+			"Commands"      	:	0xCDBFA3,
 			"Directives"    	:	0x7CC8CF,
-			"Flow"            	:	0xE4EDED,
-			"KeyNames"  	:	0xCB8DD9,
-			"Descriptions"	:	0xF0DD82,
-			"Link"            	:	0x47B856,
+			"Flow"           	:	0xE4EDED,
+			"KeyNames"      	:	0xCB8DD9,
+			"Descriptions"   	:	0xF0DD82,
+			"Link"           	:	0x47B856,
 
 			; PLAIN-TEXT
-			"PlainText" 		:	0x7F9F7F
+			"PlainText"   		:	0x7F9F7F
 			}
 		}
 		)
@@ -221,28 +252,28 @@ vnumber:= 1.45
 		( LTrim Join Comments
 		{
 		; When True, this setting may conflict with other instances of CQT
-		"GlobalRun": False,
+		"GlobalRun"         : False,
 
 		; Script options
-		"AhkPath": A_AhkPath,
-		"Params": "",
+		"AhkPath"           : A_AhkPath,
+		"Params"            : "",
 
 		; Editor (colors are 0xBBGGRR)
-		"FGColor": 0xEDEDCD,
-		"BGColor": 0x3F3F3F,
-		"GuiBGColor1"       	: "555453",
-		"GuiBGColor2"       	: "D8D7D6",
-		"TabSize": 4,
-		"Font": {
-			"Typeface": "Consolas",
-			"Size": 11,
-			"Bold": False
-		},
+		"FGColor"           : 0xEDEDCD,
+		"BGColor"           : 0x3F3F3F,
+		"GuiBGColor1"      	: "555453",
+		"GuiBGColor2"      	: "D8D7D6",
+		"TabSize"           : 4,
+		"Font" : {
+			"Typeface"        : "Consolas",
+			"Size"            : 11,
+		 	"Bold"            : False
+	        	},
 
-		"Gutter": {
-			"Width"        	: 75,
-			"FGColor"     	: 0x9FAFAF,
-			"BGColor"     	: 0x262626
+		"Gutter" : {
+			"Width"        	  : 75,
+			"FGColor"     	  : 0x9FAFAF,
+			"BGColor"     	  : 0x262626
 		},
 
 		; Highlighter (colors are 0xRRGGBB)
@@ -281,6 +312,8 @@ vnumber:= 1.45
 
 ;{ the Gui ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+	bgt := " Backgroundtrans "
+
 	; context menu
 	funcEdit 	:= Func("ContextMenu").Bind("Edit")
 	funcRun 	:= Func("ContextMenu").Bind("Run")
@@ -295,67 +328,104 @@ vnumber:= 1.45
 
 	;gui begin
 	Gui, Color, % "c" StrReplace(Settings.GuiBGColor1, "0x"), % "c" StrReplace(Settings.GuiBGColor2, "0x")
-	Gui, -DPIScale +Resize +LastFound +MinSize1920x800 HwndhCSGui	0x91CF0000 ; +LastFound and all controls will be shown at start without any problems
-	Gui, Margin          	, % MarginX , % MarginY
+	Gui, -DPIScale +Resize +LastFound +MinSize1920x800 HwndhCSGui 0x91CF0000 ; +LastFound and all controls will be shown at start without any problems
+	Gui, Margin        	, % MarginX , % MarginY
+
+	; directories
 	Gui, Font, s9 q5 cWhite Bold	, Segoe UI Light
-	Gui, Add, Text       	,, % "Initial Directory:"
+	Gui, Add, GroupBox 	, % "xm ym w580 h145 Center vGBSearchPaths hwndhGBSearchPaths"                 	, % "Directories"
 	Gui, Font, cBlack Normal
-	Gui, Add, ComboBox, Section w450 h27 r10 -Wrap vtxtInitialDirectory gIDirectory hwndhtxtInitialDirectory       	, % dirs ;txtInitialDirectory
-	Gui, Add, Button    	, hp+1 w40 ys-1 gbtnDirectoryBrowse_Click vbtnDirectoryBrowse                                    	, % "..."
-	Gui, Font, s9 q5 cWhite Bold	, Segoe UI Light
-	Gui, Add, Text       	, xm, % "String to search for:"
+	Gui, Add, Edit     	, % "xp+5 yp+30 w450 h30 r1 Section -Wrap vtxtInitialDirectory gIDirectory hwndhtxtInitDir"   , % "" ;txtInitialDirectory
+	Gui, Add, Button    , % "x+5  h30 gbtnDirectoryBrowse_Click vbtnDirectoryBrowse  "                	, % "+"
+
+	GuiControlGet, o, Pos, txtInitialDirectory
+	p := GetWIndowSpot(hGBSearchPaths)
+	Gui, Font, s7 cBlack Normal
+	Gui, Add, ListView 	, % "x" oX " y" oy+oH+3 " w" oW+40 " h" p.CH-6 " -Hdr Grid Checked vLVSearchDirs gIDirectory hwndhLVSearchDirs", % "Path|Files"
+	o := GetWindowSpot(hLVSearchDirs)
+	Gui, ListView, LVSearchDirs
+	LV_ModifyCol(1, Floor(o.CW*0.70))
+	LV_ModifyCol(2, Floor(o.CW*0.30))
+	LV_ModifyCol(3, 0)
+	o := GetWindowSpot(hLVSearchDirs)
+	GuiControl, Move, GBSearchPaths, % "h" (o.Y+o.H-p.Y+5) " w" (o.X+o.W-p.X+5)
 
 
 	;search field
+	x := o.X+o.W+10
+	Gui, Font, s9 q5 cWhite Bold	, Segoe UI Light
+	Gui, Add, GroupBox 	, % "x" x " ym w500 h145 Center vGBFileSearch hwndhGBFileSearch", % "String to search for"
+	p := GetWIndowSpot(hGBFileSearch)
 	Gui, Font, cBlack Normal
-	Gui, Add, Edit     	, Section w420 HWNDhsearch vtxtSearchString                     	, % ""
-	Gui, Add, Button   	, ys-1 hp+1 vbtnSearch gbtnSearch_Click                         	, % "Search"
-	Gui, Add, Checkbox	, Section checked xm h30 0x1000 vcbxRecurse                     	, % "RECURSE"
-	Gui, Add, Checkbox	, ys 			hp 0x1000 vcbxWholeWord                               	, % "WHOLE WORD"
-	Gui, Add, Checkbox	, ys       	hp 0x1000 vcbxCase                                   	, % "CASESENSITIVE"
-	Gui, Add, Checkbox	, ys       	hp 0x1000 vcbxSearchWhat  gcbxClick                 	, % SearchIn[InNum]
-	Gui, Add, Button   	, ys w200 	hp 0x1000 Center vSearchStop gbtnSearchStop           , % "STOP SEARCHING"
+	opts := "HWNDhsearch vtxtSearchString gbtnSearch_Check"
+	Gui, Add, Edit     	, % "x" x+5 " yp+30 Section w420 " opts	, % ""
+	o := GetWIndowSpot(hSearch)
+	Gui, Add, Button   	, % "x+5 ys h" o.H-2 " vbtnSearch gbtnSearch_Click"            	, % "Search"
+	Gui, Add, Checkbox	, % "x" x+10 " y+10 Section checked h30 0x1000 vcbxRecurse"    	, % "RECURSE"
+	Gui, Add, Checkbox	, % "x+3 hp 0x1000 vcbxWholeWord"                              	, % "WHOLE WORD"
+	Gui, Add, Checkbox	, % "x+3 hp 0x1000 vcbxCase"                                   	, % "CASESENSITIVE"
+	Gui, Add, Checkbox	, % "x" x+10 " y+5 hp 0x1000 vcbxSearchWhat gcbxClick "       	, % SearchIn[InNum]
+	Gui, Add, Button   	, % "x+3 w200	hp 0x1000 Center vSearchStop gbtnSearchStop"      , % "STOP SEARCHING"
 
 
 	;filetypes
 	Gui, Font, s9 cWhite Bold
-	GuiControlGet, p, Pos, btnDirectoryBrowse
-	x := pX+pW+20
-	Gui, Add, GroupBox	, % "x" x " ym w580 h145 Center vGBFileTypes"                   	, % "File Types"
-	Gui, Add, Checkbox	, % "yp+30 xp+15 Section checked vcbxAhk"                     		, % ".ahk/ah2"
-	Gui, Add, Checkbox	, ys vcbxHtml   BackgroundTrans                                 	, % ".html"
-	Gui, Add, Checkbox	, ys vcbxCss     BackgroundTrans                                	, % ".css"
-	Gui, Add, Checkbox	, ys vcbxJs       BackgroundTrans                               	, % ".js"
-	Gui, Add, Checkbox	, ys vcbxPy       BackgroundTrans                               	, % ".py"
-	Gui, Add, Checkbox	, ys vcbxIni      BackgroundTrans                               	, % ".ini"
-	Gui, Add, Checkbox	, ys vcbxTxt      BackgroundTrans                                	, % ".txt"
-	Gui, Add, Text        	, xs y+5                                                     	, % "Additional extension (ex. xml,cs,aspx)"
-	Gui, Font, cBlack Normal
-	Gui, Add, Edit        	, w550 vtxtAdditionalExtensions
+	x := p.X+p.W+10
+	Gui, Add, GroupBox	, % "x" x " ym w580 h145 Center vGBFileTypes hwndhGBFileTypes" , % "File Types"
+	for ftypeNr, ftype in ftypes {
+		ftypepos := (ftypeNr=1 ? "yp+30 xp+15 Section hwndhftypes":"ys") " gbtnSearch_check "
+		Gui, Add, Checkbox, % ftypepos " vcbx" fType.ext " " (ftype.checked ? "checked":"") , % RegExReplace(ftype.fext, "\.")
+	}
 
+
+	GuiControlGet, p, Pos, cbxAhk
+	Gui, Add, Button   	, % "xs y+5 h" pH-10 " vbtnCheckAll gbtn_Click"                 	, % "check/uncheck all"
+	Gui, Add, Text    	, xs y+5                                                        	, % "Additional extension (ex. xml,cs,aspx,rb)"
+	Gui, Font, cBlack Normal
+	Gui, Add, Edit     	, xs y+2 w550 vtxtAdditionalExtensions HWNDhaddExt              	, % txtAdditionalExtensions
+	o := GetWindowSpot(haddExt)
+	p := GetWindowSpot(hGBFileTypes)
+	GuiCOntrol, Move, GBFileTypes , % "h" (o.Y+o.H-p.Y+10) " w" (o.X+o.W-p.X+10)
+	GuiCOntrol, Move, GBFileSearch, % "h" (o.Y+o.H-p.Y+10)
 
 	;statics
 	Gui, Font, s9 cWhite, Segoe UI Light
 	GuiControlGet, p, Pos, GBFileTypes
 	x := pX+pW+10
-	Gui, Add, GroupBox, x%x% ym w380 h145 Center                                        	, % "Statistics"
-	Gui, Add, Text, yp+30 xp+15 w180 Right Section                                      	, % "File counter: "
-	Gui, Font, s9 Bold, Consolas
-	Gui, Add, Text, ys+3 w150 	vStatCount                                               	, % SubStr("000000" icount, -3) "/" (StrLen(thisDirLastMaxCount) = 0 ? "" : SubStr("00000" thisDirLastMaxCount, -3))
-	Gui, Font, s9 Normal, Segoe UI Light
-	Gui, Add, Text, xs w180 Right Section vTFiles                                       	, % "Files with search string: "
-	Gui, Font, s9 Bold, Consolas
-	Gui, Add, Text, ys+3 w150  	vStatFiles                                               	, % ifiles
-	Gui, Font, s9 Normal, Segoe UI Light
-	Gui, Add, Text, xs w180 Right Section vTString                                      	, % "Searchstring found: "
-	Gui, Font, s9 Bold, Consolas
-	Gui, Add, Text, ys+3 w150   vStatFound                                              	, % isub
-	Gui, Font, s9 Normal, Segoe UI Light
-	Gui, Add, Picture, x+180 ym w150 h140 gCSReload vCSReload hwndCShReload              	, % A_ScriptDir "\assets\4293840.png"   ;w135 h130
-	Gui, Add, Picture, xp yp w150 h140 vCSReload1 hwndCShReload1                        	, % A_ScriptDir "\assets\4293840.png"   ;w135 h130
-	Gui, Font, s9 Bold cB4CBE4, Segoe UI Light
-	Gui, Add, Text, xp-120 yp+130 w400 Center BackgroundTrans                            	, % "a script by Fishgeek"
-	Gui, Add, Text, yp+25  w400 Center BackgroundTrans                                   	, %  "modified by Ixiko V" vnumber " (" version ")"
+	colLeftW := 250
+	Gui, Add, GroupBox, % "x" x " ym w" colLeftW+280 " h" (o.Y+o.H-p.Y+10) " Center"                   	, % "Statistics"
+
+	Gui, Font, s9 Normal, Consolas
+	Gui, Add, Text, % "yp+40 xp+15 w" colLeftW " Right Section " bgt                , % "File counter:"
+	Gui, Font, s9 Bold
+	Gui, Add, Text, % "ys+0 w200 	vStatCount " bgt                                  , % SubStr("000000" icount, -3) . (StrLen(thisDirLastMaxCount) > 0 ? "/" SubStr("00000" thisDirLastMaxCount, -3) : "")
+
+	Gui, Font, s9 Normal, Consolas
+	Gui, Add, Text, % "xs w" colLeftW " Right Section " bgt                         , % "Path:"
+	Gui, Font, s8 Bold
+	Gui, Add, Text, % "ys+0 w300 	vStatPath " bgt                                   , % ""
+
+	Gui, Font, s9 Normal, Consolas
+	Gui, Add, Text, % "xs w" colLeftW " Right Section " bgt                         , % "Path counter:"
+	Gui, Font, s8 Bold
+	Gui, Add, Text, % "ys+0 w200 	vStatPathCount " bgt                              , % ""
+
+	Gui, Font, s9 Normal
+	Gui, Add, Text, % "xs w" colLeftW " Right Section vTFiles " bgt                	, % "Files with search string:"
+	Gui, Font, Bold
+	Gui, Add, Text, % "ys+0 w200  vStatFiles " bgt                                	, % ifiles
+
+	Gui, Font, s9 Normal
+	Gui, Add, Text, % "xs w" colLeftW " Right Section vTString " bgt               	, % "Searchstring found:"
+	Gui, Font, Bold
+	Gui, Add, Text, % "ys+0 w200   vStatFound " bgt                                	, % isub
+
+	Gui, Font, s9 Normal
+	Gui, Add, Picture, x+180 ym w150 h140 gCSReload vCSReload hwndCShReload        	, % A_ScriptDir "\assets\4293840.png"   ;w135 h130
+	Gui, Add, Picture, xp yp w150 h140 vCSReload1 hwndCShReload1                    , % A_ScriptDir "\assets\4293840.png"   ;w135 h130
+	Gui, Font, Bold
+	Gui, Add, Text, xp-120 yp+130 w400 Center BackgroundTrans                      	, % "a script by Fishgeek"
+	Gui, Add, Text, yp+25  w400 Center BackgroundTrans                             	, % "modified by Ixiko V" vnumber " (" version ")"
 
 
 	;debug
@@ -365,30 +435,26 @@ vnumber:= 1.45
 	Gui, Add, Text, % "x" px+pW+840 	" y20 w800 h120 Wrap vDebug2"
 
 	;treeview
-	GuiControlGet, p, Pos, cbxRecurse
-	h := gP.H-pY-pH-10-MarginY
+	p := GetWIndowSpot(hGBSearchPaths)
+	h := gP.H-p.Y-p.H-10-MarginY
 	Gui, Font, s9 q5, Consolas
-	Gui, Add, Treeview, % "xm y" pY+pH+20 " w" TVw " h" h " AltSubmit gResultsTV vtvResults HWNDhTV Section"
+	Gui, Add, Treeview, % "xm y" p.Y+p.H+20 " w" TVw " h" h " AltSubmit gResultsTV vtvResults HWNDhTV Section"
 
 	;richcode
 	GuiControlGet, p, Pos, tvResults
-	RCPos 	:=  "x" pX+pW+5 " y" pY " w" TPw-10 " h" pH " "
+	RCPos 	:= "x" pX+pW+5 " y" pY " w" TPw-10 " h" pH " "
 	RC    	:= new RichCode(Settings3, RCPos, 1)
 	hTP   	:= RC.hwnd
-	hGtr		:= RC.gutter.hwnd
+	hGtr  	:= RC.gutter.hwnd
 	DocObj  := RC.GetTomObject("IID_ITextDocument")
 	;~ RC.AddMargins(5, 5, 5, 5)
 	RC.ShowScrollBar(0, False)
 
 	GuiControl, Disable   	, SearchStop
-	GuiControl,           	, txtInitialDirectory, % lastDirectory
-	GuiControl, ChooseString, txtInitialDirectory, % lastDirectory
+	GuiControl, Disable   	, btnSearch
+	GuiControl,           	, txtInitialDirectory, % ""
 	GuiControl, Focus     	, txtSearchString
 
-	LV_ModifyCol(1, wFile)
-	LV_ModifyCol(2, wLineText)
-	LV_ModifyCol(3, wLine)
-	LV_ModifyCol(4, wPosition)
 
 	If (gP.X < -20) {
 		Gui, Show,      	, Code Search
@@ -414,8 +480,8 @@ vnumber:= 1.45
 	GuiControlGet	, TV, Pos, tvResults
 
 	SearchIsFocused:= Func("ControlIsFocused").Bind("Edit2")
-	Hotkey, If         	, % SearchIsFocused
-	Hotkey, ~Enter    	, btnSearch_Click
+	Hotkey, If       	, % SearchIsFocused
+	Hotkey, ~Enter   	, btnSearch_Click
 	Hotkey, If
 
 
@@ -460,22 +526,107 @@ return
 ;}
 
 ;{ gui dialogs -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-btnDirectoryBrowse_Click:	;{
+btnDirectoryBrowse_Click:            	;{
 
 	Gui, Submit, NoHide
-	startingPath := txtInitialDirectory && Instr(FileExist(txtInitialDirectory), "D") ? txtInitialDirectory : "*C:"
+	Gui, ListView, LVSearchDirs
 
-	FileSelectFolder, targetDir, % startingPath "\", 3, % "Select a starting directory."
-	if !targetDir
-		return
 
-	If !CB_ItemExist(htxtInitialDirectory, targetDir) {
+	startingPathFound := false
+	if LV_GetCount()
+		Loop % LV_GetCount() {
+			LV_GetText(startingPath, LV_GetCount()-A_Index+1, 1)
+			if Instr(FileExist(startingPath), "D") {
+				startingPathFound := true
+				break
+			}
+		}
 
+	if startingPathFound {
+		SplitPath, startingPath,,,,, OutDrive
+	}
+	else
+		OutDrive := "C:"
+
+												;Gui=0, Title="",  Filter="", DefaultFilter="", Root="", DefaultExt="",
+	;~ targetDir := Dlg_Openfile(hCSGui, "Select a folder", "", "", OutDrive "\", "PathMustExist")
+	If !IsObject(targetDir := SelectFolderEx(OutDrive "\", "Select a folder", hCSGui, "", "", 1)) {
+		MsgBox, 0x1000, % ScriptName, % " You have nothing selected."
+	return
+	}
+
+	targetDir := targetDir.SelectedDir
+	SciTEOutput("targetDir: " targetDir)
+
+	pathmatched := false
+	For searchPath, data in lastDirs {
+
+		if (searchPath = targetDir) {
+			MsgBox, 0x1000, % ScriptName , % "This path already exists!"
+			return
+		}
+		else if (Strlen(targetDir) < Strlen(searchPath)) && (targetDir ~= "i)^" searchPath) {
+			MsgBox, 4659, % ScriptName, % targetDir " is the parent path of " searchPath ".`n"
+																			. "If you search the current directory recursively,`n"
+																			.	"the last named directory would be included. `n"
+																			. "You can now discard (NO) the directory that was included anyway,`n"
+																			. " keep it (YES) or cancel the process here."
+
+			IfMsgBox, Cancel
+				return
+			IfMsgBox, No
+				lastDirs.Remove(searchpath)
+
+
+
+		}
+		else if (Strlen(targetDir) > Strlen(searchPath)) && (searchPath ~= "i)^" targetDir) {
+				MsgBox, 4659, % ScriptName, % searchPath " is the parent path of " targetDir ".`n"
+																			. "If you search the current directory recursively,`n"
+																			.	"the last named directory would be included. `n"
+																			. "You can now discard (NO) the directory that was included anyway,`n"
+																			. " keep it (YES) or cancel the process here."
+
+			IfMsgBox, Cancel
+				return
+			IfMsgBox, No
+				return
+
+		}
+
+
+	}
+
+	if !IsObject(lastDirs)
+		lastDirs := Object()
+
+	lastDirs[targetDir] := {"fTypes":{}, "active":1, "MaxCount":0}
+
+	LV_Delete()
+	if IsObject(lastDirs) {
+		SaveLastDirs()
 		GuiControl, Disable, SearchStop
-		GuiControl,, txtInitialDirectory, % targetDir
-		GuiControl, Choosestring, txtInitialDirectory, % targetDir
-		GuiControl, Focus, txtSearchString
-		config.setValue(targetDir, "LastDir")
+		Gui, ListView , LVSearchDirs
+		for searchpath, data in lastDirs {
+			fext := ""
+			for each, sfext in data.fTypes
+				fext .= (fext ? ",":"") sfext
+			LV_Add((data.active ? "Check" : ""), searchPath, fext)
+		}
+	}
+
+
+
+
+return ;}
+
+btn_Click:                            ;{
+
+	if (A_GuiControl = "btnCheckAll") {
+
+		check := (GetCheckedFileTypes() < ftypes.Count()//2) ? true : false
+		for each, ftype in ftypes
+			GuiControl,, % "cbx" ftype, % check
 
 	}
 
@@ -498,57 +649,184 @@ btnSearchStop:                      	;{
 
 return ;}
 
+btnSearch_Check:                      ;{                                         ; enables/disables the searchbutton
+
+	Gui, Submit, NoHide
+
+	ftypesChecked := GetCheckedFileTypes()
+	addExtensions	:= getAdditionalExtensions()
+	searchPaths  	:= GetSearchPaths()
+
+	if (txtSearchString && (ftypeChecked || addExtensions) && searchPaths.Count())
+		GuiControl, Enable, btnSearch
+	else
+		GuiControl, Disable, btnSearch
+
+return ;}
+
 btnSearch_Click:                  		;{
 
 	global TV          	:= Array()
 	global mFiles     	:= Object()
-	global TVIndex1	:= TVIndex2:= StopIT:= icount := ifiles := isub := StopIT := 0
-	PreviewFile_old := ""
+	global TVIndex1   	:= TVIndex2:= StopIT:= icount := ifiles := isub := StopIT := 0
+	PreviewFile_old     := ""
+	Ballon_Tip          := 0
 
 	Gui, Submit, NoHide
-	TV_Delete()
 
-    SetWorkingDir, % txtInitialDirectory
+	ftypesChecked := GetCheckedFileTypes()
+	addExtensions	:= getAdditionalExtensions()
+	allExtensions := ftypeExtensions (addExtensions ? "," addExtensions: "")
+	searchPaths  	:= GetSearchPaths()
 
-	WinSetTitle, % "ahk_id " hCSGui ,, Code Search - I am searching
-	GuiControl,           	, StatFiles   	, 0
-	GuiControl,           	, StatFound	, 0
-	GuiControl,           	, SearchStop, % "STOP SEARCHING"
-	GuiControl, Enable	, SearchStop
-	DisEnable("Disable")
-
-	thisDirMaxCount := config.getValue(txtInitialDirectory, "LastFilesInDir")
-	keyword       		:= txtSearchString
-	extensions       	:= getExtensions()
-
-	If (last_txtInitialDirectory <> txtInitialDirectory) || (last_extensions <> extensions) {
-		last_txtInitialDirectory	:= txtInitialDirectory
-		last_extensions       	:= extensions
-		SearchBuffer          	:= Object()
-		fullindexed             	:= false
-		config.setValue(txtInitialDirectory, "LastDir")
+	if !searchPaths.Count() {
+		Ballon_Tip |= 1
+		Edit_BalloonTip(htxtInitDir, "Leave directory strings here!", "Every search needs a starting point.", true)
+		GuiControl, Focus, txtInitialDirectory
 	}
 
-	If (!SearchBuffer.Count() || !fullindexed)
-		gosub FilesSearch
-	Else
-		gosub Buffersearch
+	If (!ftypesChecked && !addExtensions) {
+		Edit_BalloonTip(hftypes, "File type!", "Please check a file type..."   , true)
+		Edit_BalloonTip(haddExt, "File type!", "or leave some extensions here!", true)
+		Ballon_Tip |= 2
+	}
+
+	while !InStr(FileExist(txtInitialDirectory), "D") {
+
+		switch A_Index {
+
+			Case 1:
+				if (xpath ~= "i)^[A-Z]{1,}$")
+					xpath := Format("{:U}", xpath) . (StrLen(xpath) = 1 ? ":\" : "\\")
+
+				if InStr(FileExist(xpath), "D") {
+					GuiControl, Disable     , SearchStop
+					GuiControl,            	, txtInitialDirectory, % xpath
+					GuiControl, Choosestring, txtInitialDirectory, % xpath
+					GuiControl, Focus       , txtSearchString
+					config.setValue(xpath, "LastDir")
+				}
+				else {
+					Edit_BalloonTip(htxtInitDir, "Leave a correct directory string here!", "Every search needs a starting point.", true)
+					Ballon_Tip |= 4
+					break
+				}
+
+			Case 2:
+				Edit_BalloonTip(htxtInitDir, "Leave a correct directory string here!", "Every search needs a starting point.", true)
+				Ballon_Tip |= 4
+				break
+
+			}
+
+	}
+
+	if (Ballon_tip > 0) {
+
+		GuiControl, Disable, BtnSearch
+		SetTimer, Ballon_Tip_off, -5000
+		return
+
+	}
 
 
-	SetStatCount(icount, icount)
-	config.setValue(icount , txtInitialDirectory, "LastFilesInDir")
+ ; the search begins
+	TV_Delete()
+
+	WinSetTitle, % "ahk_id " hCSGui ,, Code Search - I am searching
+	GuiControl,           	, StatFiles	, 0
+	GuiControl,           	, StatFound	, 0
+	GuiControl,           	, SearchStop, % "STOP SEARCHING"
+	GuiControl, Enable    	, SearchStop
+	DisEnable("Disable")
+
+	extensions  := getExtensions() (addExtensions ? "," addExtensions : "")
+	keyword     := txtSearchString
+
+	If (last_txtSearchString != txtSearchString || last_extensions <> extensions) {
+		last_txtSearchString  := txtSearchString
+		last_extensions       := extensions
+		SearchBuffer          := Object()
+		fullindexed           := false
+		;config.setValue(txtInitialDirectory, "LastDir")
+	}
+
+	; search path after path
+	icount := scount := 0
+	allDirs    := GetLastFilesCount()
+	fpathtypes := Object()
+
+	for each, searchpath in searchPaths {
+
+		SetWorkingDir, % searchpath
+		GuiControl,, StatPath, % StatPath
+		scount := 0
+
+		if allDirs.MaxCount
+			SetStatCount(0, allDirs.MaxCount, 0, allDirs.spath[searchPath].MaxCount)
+
+		fpathtypes[searchpath] := Object()
+		if (!SearchBuffer.Count() || !fullindexed)
+			gosub FilesSearch
+		else
+			gosub Buffersearch
+
+		for fext, fextCount in fpathtypes[searchpath] {
+			if !IsObject(lastDirs[searchpath])
+				lastDirs[searchpath] := Object()
+			if !IsObject(lastDirs[searchpath].fTypes)
+				lastDirs[searchpath].fTypes := Object()
+
+			lastDirs[searchpath].fTypes[fext] += fextCount
+		}
+
+	}
+
+	SetStatCount(icount, allDirs.MaxCount, scount, allDirs.sPaths[searchPath].MaxCount)
+	;config.setValue(icount , txtInitialDirectory, "LastFilesInDir")
+
+ ; count all
+	lastDirs.MaxCount := 0
+	for each, searchpath in lastDirs {
+		searchpath.MaxCount := 0
+		for fExt, fextCount in searchpath.fTypes {
+			searchpath.MaxCount += fextCount
+			lastDirs.MaxCount += fextCount
+		}
+	}
+
+ ; save paths
+	SaveLastDirs()
+
 
 	WinSetTitle, % "ahk_id " hCSGui,, Code Search - ready with searching
-	GuiControl,           	, SearchStop    	, % "STOP SEARCHING"
+	GuiControl,        	, SearchStop    	, % "STOP SEARCHING"
 	GuiControl, Disable	, SearchStop
 	DisEnable("Enable")
 
+return
+
+Ballon_Tip_Off: ;{
+
+	if BallonTip & 1 {
+		Edit_BalloonTip(hftypes, "File type!", "Please check a file type!", false)
+		Edit_BalloonTip(haddExt, "File type!", "or leave some extensions here!", false)
+	}
+	if BallonTip & 2
+		Edit_BalloonTip(htxtInitDir, "Leave directory strings here!", "Every search needs a starting point.", true)
+	if BallonTip & 4
+		Edit_BalloonTip(htxtInitDir, "Leave a better directory string here!", "Every search needs a starting point.", false)
+	if BallonTip & 4
+		Edit_BalloonTip(htxtInitDir, "Leave a directory string here!", "Every search needs a starting point.", false)
+
 return ;}
+
+;}
 
 FilesSearch:                        	;{
 
 	fullindexed := false
-	Loop, Files, % txtInitialDirectory "\*.*", % (cbxRecurse ? "R":"")
+	Loop, Files, % searchpath "\*.*", % (cbxRecurse ? "R":"")
 	{
 		While (StopIT = 1)
 			loop 30
@@ -556,15 +834,22 @@ FilesSearch:                        	;{
 
 		if A_LoopFileAttrib contains H,S,R
 			continue
+		if A_LoopFileExt in %allExtensions%
+			fpathtypes[searchpath][A_LoopFileExt] := !fpathtypes[searchpath][A_LoopFileExt] ? 1 : fpathtypes[searchpath][A_LoopFileExt]+1
 		if A_LoopFileExt not in %extensions%
 			continue
 
 		icount ++
-		SetStatCount(icount, (icount > thisDirMaxCount ? icount : thisDirMaxCount))
+		scount ++
+		SetStatCount(icount, allDirs.MaxCount, scount, allDirs.sPaths[searchpath].MaxCount)
 
-		filePath		:= A_LoopFileFullPath
+		filePath	:= A_LoopFileFullPath
 		fileName 	:= A_LoopFileName
-		txt     		:= FileOpen(filepath, "r").Read()
+
+		try
+			txt	:= FileOpen(filepath, "r").Read()
+		catch
+			continue
 
 		SearchBuffer.Push({"path":filePath, "txt":txt})
 		FindAndShow(txt, filepath)
@@ -578,7 +863,7 @@ return ;}
 
 BufferSearch:                       	;{
 
-	Sciteoutput(SearchBuffer.Count() "`n" SearchBuffer[1].txt)
+	;~ Sciteoutput(SearchBuffer.Count() "`n" SearchBuffer[1].txt)
 	modDiv := StrLen(SearchBuffer.Count()) < 3 ? 1 : 100
 
 	For buffIndex, file in SearchBuffer {
@@ -589,11 +874,11 @@ BufferSearch:                       	;{
 
 		FindAndShow(file.txt, file.path)
 		If (Round(Mod(buffIndex, modDiv)) = 0)
-			SetStatCount(buffIndex, SearchBuffer.Count())
+			SetStatCount(buffIndex, SearchBuffer.Count(), 0, 0)
 
 	}
 
-	SetStatCount(buffIndex, SearchBuffer.Count())
+	SetStatCount(buffIndex, SearchBuffer.Count(), 0, 0)
 	icount := buffIndex
 
 return ;}
@@ -610,14 +895,14 @@ FindAndShow(txt, filepath)          	{                                       	; 
 				If !mFiles.HasKey(filepath) {
 					SplitPath, filepath, outFileName, OutDir
 					TVIndex1 ++
-					TV[TVIndex1]   	:= Array()
-					TV[TVIndex1]   	:= TV_Add(outFileName " [" OutDir "]" )
+					TV[TVIndex1]    	:= Array()
+					TV[TVIndex1]    	:= TV_Add(outFileName " [" OutDir "]" )
 					mFiles[filepath] 	:= Object()
 					mFiles[filepath].Push({"line":lineNr, "linepos":obj.Pos(), "TVIndex1":TVIndex1})
 				}
 
 	  ; search only in filenames continues here
-			If (InNum=3)
+			If (InNum = 3)
 				return
 		}
 
@@ -673,22 +958,23 @@ ResultsTV:	                        	;{
 	CrtLine1 := RC.GetCaretLine()
 	global EventInfo:= A_EventInfo
 
-	If RegExMatch(A_GuiEvent , "i)Normal|S$") && (A_EventInfo <> 0)	{
+	If RegExMatch(A_GuiEvent, "i)(Normal|S)$") && (A_EventInfo <> 0)	{
 
 			TVText := TV_GetInfo(EventInfo)
 			RegExMatch(TVText.parent, "(.*)\s+\[(.*)\]", match)
 			PreviewFile := match2 "\" match1
 
-			If (PreviewFile <> PreviewFile_old) {
+			If (PreviewFile != PreviewFile_old) {
+
 				RC.Settings.Highlighter := GetHighlighter(PreviewFile)
-				RC.Value   	:= FileOpen(PreviewFile, "r").Read()
+				RC.Value              	:= FileOpen(PreviewFile, "r").Read()
 				RC.UpdateGutter()
 
-				CurrentSel 	:= RC.GetSel()                           	; get the current selection
+				CurrentSel    	:= RC.GetSel()                      	; get the current selection
 
-				CF2 := RC.GetCharFormat()
-				CF2.Mask      	:= 0x40000001	    	    		; set Mask (CFM_COLOR = 0x40000000, CFM_BOLD = 0x00000001)
-				CF2.Effects    	:= 0x01                                   	; set Effects to bold (CFE_BOLD = 0x00000001)
+				CF2             := RC.GetCharFormat()
+				CF2.Mask      	:= 0x40000001	    	              		; set Mask (CFM_COLOR = 0x40000000, CFM_BOLD = 0x00000001)
+				CF2.Effects    	:= 0x01                              	; set Effects to bold (CFE_BOLD = 0x00000001)
 				CF2.TextColor 	:= 0x006666
 				CF2.BackColor 	:= 0xFFFF00
 				RC.SetFont({BkColor:"YELLOW", Color:"BLACK"})
@@ -721,35 +1007,32 @@ ResultsTV:	                        	;{
     }
 
 return ;}
-
 IDirectory:                          	;{
 
 	Gui, Submit, NoHide
 
 	If Instr(A_GuiControl, "txtInitialDirectory") && Instr(A_GuiControlEvent, "Normal") {
-		DirMaxCount := config.getValue(txtInitialDirectory, "LastFilesInDir", 0)
-		SetStatCount(0, DirMaxCount)
+		;DirMaxCount := config.getValue(txtInitialDirectory, "LastFilesInDir", 0)
+		SetStatCount(0, lastDirs.MaxCount, 0, 0)
 		GuiControl,, StatFiles   	, % ""
-		GuiControl,, StatFound	, % ""
+		GuiControl,, StatFound   	, % ""
 	}
 
 return ;}
-
 CSReload:                           	;{
 	SaveGuiPos()
+	SaveLastDirs()
 	Reload
 return ;}
-
 GuiClose: 	                        	;{
 	SaveGuiPos()
+	SaveLastDirs()
 ExitApp
 ;}
-
 RCHandler(p1,p2,p3,p4)              	{
 	If dbg
 		GuiControl,, Debug2,  % "GCE: " p1 " | GE: " p2 " | AEI: " p3 "`nCL: " p4
 }
-
 ContextMenu(MenuName)               	{
 
 	TVText := TV_GetInfo(Eventinfo)
@@ -771,7 +1054,7 @@ ContextMenu(MenuName)               	{
 ;}
 
 ;{ functions --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-OnWM_MOUSEMOVE(wParam, lParam, msg, hWnd) 		{
+OnWM_MOUSEMOVE(wParam, lParam, msg, hWnd) 	                                	{
 
   Global hCursor1, hCursor2, hCSGui, hFooter, CShReload, hTV, hTP, hGtr
 	Static hOldCursor, lasthwnd
@@ -865,7 +1148,7 @@ OnWM_MOUSEMOVE(wParam, lParam, msg, hWnd) 		{
 	}
 
 }
-OnWM_SETCURSOR(wParam, lParam, msg, hWnd)        	{
+OnWM_SETCURSOR(wParam, lParam, msg, hWnd)                                    	{
 
     CoordMode Mouse, Client
     MouseGetPos x, y
@@ -879,7 +1162,7 @@ OnWM_SETCURSOR(wParam, lParam, msg, hWnd)        	{
 
 }
 
-FishMove(hwnd) {
+FishMove(hwnd)                                                                {
 
 	static _initMove:=false
 	static movePix := [[6,1],[8,3],[10,6]]
@@ -895,7 +1178,7 @@ FishMove(hwnd) {
 		Random horizontal, 0, 1
 		Random maxDelta, 30, 120
 		maxDPlus := Round(maxDelta//(movePix.Count()*2))
-		SciTEOutput(maxDelta ", " maxDPlus)
+		;~ SciTEOutput(maxDelta ", " maxDPlus)
 		;~ Random velocity, 1, 15
 
 		move := dir ? 1 : -1
@@ -976,22 +1259,36 @@ TV_GetInfo(EventInfo)                                                       	{
 
 return {"parent": PText, "child": SText, "fullfilepath": fullFilePath, "filepath": FilePath, "EventInfo": EventInfo}
 }
-GetLastDirs()                                                                	{                         	;-- loads last folders
-
-	lastDirs := ""
-	FileRead, tmpFile, % A_ScriptDir "\config.ini"
-	RegExMatch(StrReplace(tmpFile, "`r`n", "|"), "i)\[LastFilesInDir\](.*)", dir)
-	For itemNr, item in StrSplit(dir1, "|") {
-		dir := RegExReplace(A_LoopField, "\s*\=\s*\d+", "")
-		If Instr(FileExist(dir), "D")
-			lastDirs .= dir "|"
-	}
-
-return LTrim(RTrim(lastDirs, "|"), "|")
+GetLastDirs()                                                                	{                   	;-- loads last folders
+	if FileExist(A_ScriptDir "\lastDirs.json") {
+		try {
+			lastDirs := cJSON.Loads(FileOpen(A_ScriptDir "\lastDirs.json", "r", "UTF-8").Read())
+		} catch
+			lastDirs := Object()
+	} else
+		lastDirs := Object()
+return lastDirs
 }
-SetStatCount(now, max)                                                      	{
+SaveLastDirs()                                                                {
+	global lastDirs
+
+	if (!IsObject(lastDirs) || lastDirs.Count() = 0)
+		return
+
+	cJSON.EscapeUnicode := true
+	FileOpen(A_ScriptDir "\lastDirs.json", "w", "UTF-8").Write(cJSON.Dump(lastDirs, 1))
+
+}
+SetStatCount(now, max, yet, notyet)                                          	{
+
+	max := now >= max ? now : max
 	maxLen := Max(StrLen(now), StrLen(max))
 	GuiControl,, StatCount, % SubStr("0000000" now, -1*(maxLen-1)) "/" SubStr("0000000" max, -1*(maxLen-1))
+
+	notyet := yet >= notyet ? yet : notyet
+	maxLen := Max(StrLen(yet), StrLen(notyet))
+	GuiControl,, StatPathCount, % SubStr("0000000" yet, -1*(maxLen-1)) "/" SubStr("0000000" notyet, -1*(maxLen-1))
+
 }
 DisEnable(status)                                                           	{
 	; use Enable or Disable
@@ -1000,13 +1297,13 @@ DisEnable(status)                                                           	{
 	GuiControl, % status, txtSearchString
 	GuiControl, % status, btnSearch
 }
-ControlIsFocused(ControlID)                                                  	{                          	;-- true or false if specified gui control is active or not
+ControlIsFocused(ControlID)                                                  	{                   	;-- true or false if specified gui control is active or not
 	GuiControlGet, FControlID, Focus
 	If Instr(FControlID, ControlID)
 			return true
 return false
 }
-GetWindowSpot(hWnd)                                                         	{                          	;-- like GetWindowInfo, but faster because it only returns position and sizes
+GetWindowSpot(hWnd)                                                         	{                    	;-- like GetWindowInfo, but faster because it only returns position and sizes
     NumPut(VarSetCapacity(WINDOWINFO, 60, 0), WINDOWINFO)
     DllCall("GetWindowInfo", "Ptr", hWnd, "Ptr", &WINDOWINFO)
     wi := Object()
@@ -1027,7 +1324,7 @@ GetWindowSpot(hWnd)                                                         	{  
     wi.V  	:= NumGet(WINDOWINFO, 58, "UShort")
 Return wi
 }
-SetWindowPos(hWnd, x, y, w, h, hWndInsertAfter := 0, uFlags := 0x40) {                                		;--works better than the internal command WinMove - why?
+SetWindowPos(hWnd, x, y, w, h, hWndInsertAfter := 0, uFlags := 0x40) 		    	{                  		;--works better than the internal command WinMove - why?
 
 	/*  ; https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-setwindowpos
 
@@ -1051,15 +1348,27 @@ SetWindowPos(hWnd, x, y, w, h, hWndInsertAfter := 0, uFlags := 0x40) {          
 
 Return DllCall("SetWindowPos", "Ptr", hWnd, "Ptr", hWndInsertAfter, "Int", x, "Int", y, "Int", w, "Int", h, "UInt", uFlags)
 }
+Edit_BalloonTip(hEdit, Text, Title := "", Show:= false, Icon := 0)   		    	{
+    NumPut(VarSetCapacity(EDITBALLOONTIP, 4 * A_PtrSize, 0), EDITBALLOONTIP)
+    NumPut(&Title, EDITBALLOONTIP, A_PtrSize    , "Ptr")
+    NumPut(&Text , EDITBALLOONTIP, A_PtrSize * 2, "Ptr")
+    NumPut(Icon  , EDITBALLOONTIP, A_PtrSize * 3, "UInt")
+	SendMessage % (!Show ? 0x1504:0x1503 ), 0, &EDITBALLOONTIP,, % "ahk_id " hEdit ; EM_HIDE OR SHOWBALLOONTIP
+Return ErrorLevel
+}
+LV_RowIsChecked(rowNr, hLV)                                                  	{
+	SendMessage, 0x102C, rowNr - 1, 0xF000,, % "ahk_id " hLV   ; 0x102C is LVM_GETITEMSTATE. 0xF000 is LVIS_STATEIMAGEMASK.
+return (IsChecked := (ErrorLevel >> 12) - 1)  ; This sets IsChecked to true if RowNumber is checked or false otherwise.
+}
 
 RedrawWindow(hwnd=0)                                                        	{
 	static RDW_INVALIDATE 	:= 0x0001
-	static	RDW_ERASE           	:= 0x0004
-	static RDW_FRAME          	:= 0x0400
+	static RDW_ERASE       	:= 0x0004
+	static RDW_FRAME       	:= 0x0400
 	static RDW_ALLCHILDREN	:= 0x0080
 return dllcall("RedrawWindow", "Ptr", hwnd, "Ptr", 0, "Ptr", 0, "UInt", RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_ALLCHILDREN)
 }
-WinGetMinMaxState(hwnd)                                                      	{                 			;-- get state if window ist maximized or minimized
+WinGetMinMaxState(hwnd)                                                      	{                 		;-- get state if window ist maximized or minimized
 	; this function is from AHK-Forum: https://autohotkey.com/board/topic/13020-how-to-maximize-a-childdocument-window/
 	; it returns z for maximized("zoomed") or i for minimized("iconic")
 	; it's also work on MDI Windows - use hwnd you can get from FindChildWindow()
@@ -1067,7 +1376,7 @@ WinGetMinMaxState(hwnd)                                                      	{ 
 	iconic	:= DllCall("IsIconic"	, "UInt", hwnd)		; Check if minimized
 return (zoomed>iconic) ? "z":"i"
 }
-GetSavedGuiPos(MarginX, MarginY)                                            	{                       	;-- loads last gui position
+GetSavedGuiPos(MarginX, MarginY)                                            	{                    	;-- loads last gui position
 
 	gP 	:= Object()
 
@@ -1083,14 +1392,17 @@ return gP
 }
 SaveGuiPos()                                                                 	{
 	winMax 	:= Instr(WinGetMinMaxState(hCSGui), "z") ? 1 : 0
-	win 			:= GetWindowSpot(hCSGui)
-	winPos	 	:= win.X "|" win.Y "|" win.CW "|" win.CH "|" winMax
-	trv	    		:= GetWindowSpot(hTV)
+	win		:= GetWindowSpot(hCSGui)
+	winPos 	:= win.X "|" win.Y "|" win.CW "|" win.CH "|" winMax
+	trv	  	:= GetWindowSpot(hTV)
 	IniWrite, % winpos	, % A_ScriptDir "\config.ini", Settings, GuiPos
 	IniWrite, % trv.CW	, % A_ScriptDir "\config.ini", Settings, TV_Width
 }
 GetHighlighter(file)                                                        	{
 	SplitPath, file,,, extension
+	extension := extension ~= "i)(python|py)"             	? "Python"
+						:	 extension ~= "i)^(ahk|ahk1|ah1|ahk2|ah2)$" ? "AHK"
+						:  extension
 return isFunc("Highlight" extension) ? ("Highlight" extension) : ""
 }
 GetFocusedControlHwnd(hwnd:="A")                                            	{
@@ -1131,9 +1443,77 @@ return
 truncate(s, c="50")                                                         	{
 return (StrLen(s) > c) ? SubStr(s, 1, c) " (...)" : LTrim(s)
 }
+GetLastFilesCount(searchpaths:="", extensions:="")                          	{                     ;-- counts last files found in all dirs
+
+	global lastDirs
+
+	if !IsObject(searchPaths)
+		searchpaths := GetSearchPaths()
+
+	if !extensions {
+		addExtensions := getAdditionalExtensions()
+		extensions  	:= getExtensions()
+		extensions  	:= extensions (addExtensions ? (extensions ? ",":"") addExtensions : "")
+	}
+
+	allDirs := Object()
+	allDirs.MaxCount := 0
+	allDirs.fType    := Object()
+	allDirs.sPaths   := Object()
+	allDirs.sPaths.MaxCount := 0
+	for each, searchpath in searchPaths
+		if isObject(lastDir[searchpath])
+			for ftypeNr, fext in StrSplit(extensions, ",") {
+				allDirs.fType[fext]                 += lastDirs[searchpath].ftype[fext]
+				allDirs.MaxCount  	                += lastDirs[searchpath].ftype[fext]
+				allDirs.sPaths[searchpath][fext]  	+= lastDirs[searchpath].ftype[fext]
+				allDirs.sPaths[searchpath].MaxCount	+= lastDirs[searchpath].ftype[fext]
+			}
+
+return allDirs
+}
+GetCheckedFileTypes()                                                         {                     ;-- counts checked extensions
+
+	global ftypes
+
+	Gui, Submit, NoHide
+
+	ftypesChecked := 0
+	for each, ftype in ftypes {
+		GuiControlGet, ischecked,, % "cbx" ftype
+		ftypesChecked += ischecked ? 1 : 0
+	}
+
+return ftypesChecked
+}
+GetSearchPaths()                                                              {                    	;-- alle Suchpfade ermitteln
+	searchpaths := []
+	Gui, ListView, LVSearchDirs
+	Loop % LV_GetCount() {
+		LV_GetText(fpath, A_Index, 1)
+		LV_GetText(fexts, A_Index, 2)
+		fpath := RegExReplace(Trim(fpath), "[^\pL\d\-\_\.,;:@+#]+$")
+		if InStr(FileExist(fpath), "D")
+			searchpaths.Push(fpath)
+	}
+return searchpaths
+}
 getExtensions()                                                              	{
 	global
 return RTrim((cbxAhk ? "ahk,ah2" : "") (cbxTxt ? "txt,": "") (cbxIni ? "ini," : "") (cbxHtml ? "html," : "") (cbxCss ? "css," : "") (cbxPy ? "py," : "") (cbxJs ? "js," : ""), ",")
+}
+getAdditionalExtensions()                                                    	{
+	global txtAdditionalExtensions
+	Gui, Submit, NoHide
+	AddExtensions := RegExReplace(txtAdditionalExtensions, "[^\w_,]")
+	AddExtensions := RegExReplace(AddExtensions, "^,+$")
+	AddExtensions := RegExReplace(AddExtensions, "^,+")
+	AddExtensions := RegExReplace(AddExtensions, ",+$")
+	if (AddExtensions != txtAdditionalExtensions)
+		GuiControl,, txtAdditionalExtensions, % AddExtensions
+	if (AddExtensions != lastAdditionalExtensions)
+		config.setValue("additionalExtensions", "Settings", AddExtensions)
+return AddExtensions
 }
 getExpression(keyword, wholeWord)                                           	{
 return (wholeWord) ? "[\s|\W]?" keyword "[\s|\W]" : keyword
@@ -1174,8 +1554,8 @@ GenHighlighterCache(Settings)                                                	{
 		RTF .= "{\colortbl;"
 		For Name, Color in Cache.Colors	{
 			RTF .= "\red"    	Color>>16	& 0xFF
-			RTF .= "\green"	Color>>8 	& 0xFF
-			RTF .= "\blue"  	Color        	& 0xFF ";"
+			RTF .= "\green" 	Color>>8 	& 0xFF
+			RTF .= "\blue"  	Color      	& 0xFF ";"
 		}
 		RTF .= "}"
 
@@ -1294,7 +1674,7 @@ CB_ItemExist(cbhwnd, item)                                                  	{
 
 return false
 }
-GetAppImagePath(appname) {                                                                                   	;-- Installationspfad eines Programmes
+GetAppImagePath(appname)                                                      {                   	;-- Installationspfad eines Programmes
 
 	headers:= {	"DISPLAYNAME"                  	: 1
 					, 	"VERSION"                         	: 2
@@ -1321,7 +1701,7 @@ GetAppImagePath(appname) {                                                      
 
 return ""
 }
-GetAppsInfo(infoType) {
+GetAppsInfo(infoType)                                                         {
 
 	static CLSID_EnumInstalledApps := "{0B124F8F-91F0-11D1-B8B5-006008059382}"
         , IID_IEnumInstalledApps     	:= "{1BC752E1-9046-11D1-B8B3-006008059382}"
@@ -1362,7 +1742,212 @@ GetAppsInfo(infoType) {
    }
    Return res
 }
+SelectFolderEx(StartingFolder:="", Prompt:="", OwnerHwnd:=0, OkBtnLabel:="", comboList:="", desiredDefault:=1, comboLabel:="", CustomPlaces:="", pickFoldersOnly:=1) {
+; ==================================================================================================================================
+; Shows a dialog to select a folder.
+; Depending on the OS version the function will use either the built-in FileSelectFolder command (XP and previous)
+; or the Common Item Dialog (Vista and later).
+;
+; Parameter:
+;     StartingFolder -  the full path of a folder which will be preselected.
+;     Prompt         -  a text used as window title (Common Item Dialog) or as text displayed withing the dialog.
+;     ----------------  Common Item Dialog only:
+;     OwnerHwnd      -  HWND of the Gui which owns the dialog. If you pass a valid HWND the dialog will become modal.
+;     BtnLabel       -  a text to be used as caption for the apply button.
+;     comboList      -  a string with possible drop-down options, separated by `n [new line]
+;     desiredDefault -  the default selected drop-down row
+;     comboLabel     -  the drop-down label to display
+;     CustomPlaces   -  custom directories that will be displayed in the left pane of the dialog; missing directories will be omitted; a string separated by `n [newline]
+;     pickFoldersOnly - boolean option [0, 1]
+;
+;  Return values:
+;     On success the function returns an object with the full path of the selected/file folder
+;     and combobox selected [if any]; otherwise it returns an empty string.
+;
+; MSDN:
+;     Common Item Dialog -> msdn.microsoft.com/en-us/library/bb776913%28v=vs.85%29.aspx
+;     IFileDialog        -> msdn.microsoft.com/en-us/library/bb775966%28v=vs.85%29.aspx
+;     IShellItem         -> msdn.microsoft.com/en-us/library/bb761140%28v=vs.85%29.aspx
+; ==================================================================================================================================
+; Source https://www.autohotkey.com/boards/viewtopic.php?f=6&t=18939
+; by «just me»
+; modified by Marius Șucan on: vendredi 8 mai 2020
+; to allow ComboBox and CustomPlaces
+;
+; options flags
+; FOS_OVERWRITEPROMPT  = 0x2,
+; FOS_STRICTFILETYPES  = 0x4,
+; FOS_NOCHANGEDIR  = 0x8,
+; FOS_PICKFOLDERS  = 0x20,
+; FOS_FORCEFILESYSTEM  = 0x40,
+; FOS_ALLNONSTORAGEITEMS  = 0x80,
+; FOS_NOVALIDATE  = 0x100,
+; FOS_ALLOWMULTISELECT  = 0x200,
+; FOS_PATHMUSTEXIST  = 0x800,
+; FOS_FILEMUSTEXIST  = 0x1000,
+; FOS_CREATEPROMPT  = 0x2000,
+; FOS_SHAREAWARE  = 0x4000,
+; FOS_NOREADONLYRETURN  = 0x8000,
+; FOS_NOTESTFILECREATE  = 0x10000,
+; FOS_HIDEMRUPLACES  = 0x20000,
+; FOS_HIDEPINNEDPLACES  = 0x40000,
+; FOS_NODEREFERENCELINKS  = 0x100000,
+; FOS_OKBUTTONNEEDSINTERACTION  = 0x200000,
+; FOS_DONTADDTORECENT  = 0x2000000,
+; FOS_FORCESHOWHIDDEN  = 0x10000000,
+; FOS_DEFAULTNOMINIMODE  = 0x20000000,
+; FOS_FORCEPREVIEWPANEON  = 0x40000000,
+; FOS_SUPPORTSTREAMABLEITEMS  = 0x80000000
 
+; IFileDialog vtable offsets
+; 0   QueryInterface
+; 1   AddRef
+; 2   Release
+; 3   Show
+; 4   SetFileTypes
+; 5   SetFileTypeIndex
+; 6   GetFileTypeIndex
+; 7   Advise
+; 8   Unadvise
+; 9   SetOptions
+; 10  GetOptions
+; 11  SetDefaultFolder
+; 12  SetFolder
+; 13  GetFolder
+; 14  GetCurrentSelection
+; 15  SetFileName
+; 16  GetFileName
+; 17  SetTitle
+; 18  SetOkButtonLabel
+; 19  SetFileNameLabel
+; 20  GetResult
+; 21  AddPlace
+; 22  SetDefaultExtension
+; 23  Close
+; 24  SetClientGuid
+; 25  ClearClientData
+; 26  SetFilter
+
+   Static OsVersion := DllCall("GetVersion", "UChar")
+        , IID_IShellItem := 0
+        , InitIID := VarSetCapacity(IID_IShellItem, 16, 0)
+                  & DllCall("Ole32.dll\IIDFromString", "WStr", "{43826d1e-e718-42ee-bc55-a1e261c37bfe}", "Ptr", &IID_IShellItem)
+        , Show := A_PtrSize * 3
+        , SetOptions := A_PtrSize * 9
+        , SetFolder := A_PtrSize * 12
+        , SetTitle := A_PtrSize * 17
+        , SetOkButtonLabel := A_PtrSize * 18
+        , GetResult := A_PtrSize * 20
+        , ComDlgObj := {COMDLG_FILTERSPEC: ""}
+
+   SelectedFolder := ""
+   If (OsVersion<6)
+   {
+      ; IFileDialog requires Win Vista+, so revert to FileSelectFolder
+      FileSelectFolder, SelectedFolder, *%StartingFolder%, 3, %Prompt%
+      Return SelectedFolder
+   }
+
+   OwnerHwnd := DllCall("IsWindow", "Ptr", OwnerHwnd, "UInt") ? OwnerHwnd : 0
+   If !(FileDialog := ComObjCreate("{DC1C5A9C-E88A-4dde-A5A1-60F82A20AEF7}", "{42f85136-db7e-439c-85f1-e4075d135fc8}"))
+      Return ""
+
+   VTBL := NumGet(FileDialog + 0, "UPtr")
+   dialogOptions := 0x8 | 0x800  ;  FOS_NOCHANGEDIR | FOS_PATHMUSTEXIST
+   dialogOptions |= (pickFoldersOnly=1) ? 0x20 : 0x1000    ; FOS_PICKFOLDERS : FOS_FILEMUSTEXIST
+
+   DllCall(NumGet(VTBL + SetOptions, "UPtr"), "Ptr", FileDialog, "UInt", dialogOptions, "UInt")
+   If StartingFolder
+   {
+      If !DllCall("Shell32.dll\SHCreateItemFromParsingName", "WStr", StartingFolder, "Ptr", 0, "Ptr", &IID_IShellItem, "PtrP", FolderItem)
+         DllCall(NumGet(VTBL + SetFolder, "UPtr"), "Ptr", FileDialog, "Ptr", FolderItem, "UInt")
+   }
+
+   If Prompt
+      DllCall(NumGet(VTBL + SetTitle, "UPtr"), "Ptr", FileDialog, "WStr", Prompt, "UInt")
+   If OkBtnLabel
+      DllCall(NumGet(VTBL + SetOkButtonLabel, "UPtr"), "Ptr", FileDialog, "WStr", OkBtnLabel, "UInt")
+
+   If CustomPlaces
+   {
+      Loop, Parse, CustomPlaces, `n
+      {
+          If InStr(FileExist(A_LoopField), "D")
+          {
+             foo := 1, Directory := A_LoopField
+             DllCall("Shell32.dll\SHParseDisplayName", "UPtr", &Directory, "Ptr", 0, "UPtrP", PIDL, "UInt", 0, "UInt", 0)
+             DllCall("Shell32.dll\SHCreateShellItem", "Ptr", 0, "Ptr", 0, "UPtr", PIDL, "UPtrP", IShellItem)
+             ObjRawSet(ComDlgObj, IShellItem, PIDL)
+             ; IFileDialog::AddPlace method
+             ; https://msdn.microsoft.com/en-us/library/windows/desktop/bb775946(v=vs.85).aspx
+             DllCall(NumGet(NumGet(FileDialog+0)+21*A_PtrSize), "UPtr", FileDialog, "UPtr", IShellItem, "UInt", foo)
+          }
+      }
+   }
+
+   If (comboList && comboLabel)
+   {
+      Try If ((FileDialogCustomize := ComObjQuery(FileDialog, "{e6fdd21a-163f-4975-9c8c-a69f1ba37034}")))
+      {
+         groupId := 616 ; arbitrarily chosen IDs
+         comboboxId := 93270
+         DllCall(NumGet(NumGet(FileDialogCustomize+0)+26*A_PtrSize), "Ptr", FileDialogCustomize, "UInt", groupId, "WStr", comboLabel) ; IFileDialogCustomize::StartVisualGroup
+         DllCall(NumGet(NumGet(FileDialogCustomize+0)+6*A_PtrSize), "Ptr", FileDialogCustomize, "UInt", comboboxId) ; IFileDialogCustomize::AddComboBox
+         ; DllCall(NumGet(NumGet(FileDialogCustomize+0)+19*A_PtrSize), "Ptr", FileDialogCustomize, "UInt", comboboxId, "UInt", itemOneId, "WStr", "Current folder") ; IFileDialogCustomize::AddControlItem
+
+         entriesArray := []
+         Loop, Parse, comboList,`n
+         {
+             Random, varA, 2, 900
+             Random, varB, 2, 900
+             thisID := varA varB
+             If A_LoopField
+             {
+                If (A_Index=desiredDefault)
+                   desiredIDdefault := thisID
+
+                entriesArray[thisId] := A_LoopField
+                DllCall(NumGet(NumGet(FileDialogCustomize+0)+19*A_PtrSize), "Ptr", FileDialogCustomize, "UInt", comboboxId, "UInt", thisID, "WStr", A_LoopField)
+             }
+         }
+
+         DllCall(NumGet(NumGet(FileDialogCustomize+0)+25*A_PtrSize), "Ptr", FileDialogCustomize, "UInt", comboboxId, "UInt", desiredIDdefault) ; IFileDialogCustomize::SetSelectedControlItem
+         DllCall(NumGet(NumGet(FileDialogCustomize+0)+27*A_PtrSize), "Ptr", FileDialogCustomize) ; IFileDialogCustomize::EndVisualGroup
+      }
+
+   }
+
+   If !DllCall(NumGet(VTBL + Show, "UPtr"), "Ptr", FileDialog, "Ptr", OwnerHwnd, "UInt")
+   {
+      If !DllCall(NumGet(VTBL + GetResult, "UPtr"), "Ptr", FileDialog, "PtrP", ShellItem, "UInt")
+      {
+         GetDisplayName := NumGet(NumGet(ShellItem + 0, "UPtr"), A_PtrSize * 5, "UPtr")
+         If !DllCall(GetDisplayName, "Ptr", ShellItem, "UInt", 0x80028000, "PtrP", StrPtr) ; SIGDN_DESKTOPABSOLUTEPARSING
+            SelectedFolder := StrGet(StrPtr, "UTF-16"), DllCall("Ole32.dll\CoTaskMemFree", "Ptr", StrPtr)
+
+         ObjRelease(ShellItem)
+         if (FileDialogCustomize)
+         {
+            if (DllCall(NumGet(NumGet(FileDialogCustomize+0)+24*A_PtrSize), "Ptr", FileDialogCustomize, "UInt", comboboxId, "UInt*", selectedItemId) == 0)
+            { ; IFileDialogCustomize::GetSelectedControlItem
+               if selectedItemId
+                  thisComboSelected := entriesArray[selectedItemId]
+            }
+         }
+      }
+   }
+   If (FolderItem)
+      ObjRelease(FolderItem)
+
+   if (FileDialogCustomize)
+      ObjRelease(FileDialogCustomize)
+
+   ObjRelease(FileDialog)
+   r := []
+   r.SelectedDir := SelectedFolder
+   r.SelectedCombo := thisComboSelected
+   Return r
+}
 
 ;}
 
@@ -1371,8 +1956,10 @@ GetAppsInfo(infoType) {
 #Include %A_ScriptDir%\Classes\Highlighters\CSS.ahk
 #Include %A_ScriptDir%\Classes\Highlighters\JS.ahk
 #Include %A_ScriptDir%\Classes\Highlighters\HTML.ahk
+#Include %A_ScriptDir%\Classes\Highlighters\Python.ahk
 #Include %A_ScriptDir%\Classes\class_RichCode.ahk
 #Include %A_ScriptDir%\Classes\class_WinEvents.ahk
+#Include %A_ScriptDir%\Classes\class_cJSON.ahk
 #Include %A_ScriptDir%\Includes\SciTEOutput.ahk
 
 

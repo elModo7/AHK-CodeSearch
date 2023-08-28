@@ -61,20 +61,20 @@ HighlightAHK(Settings, ByRef Code) {
 	( LTrim Join Comments
 		ODims)
 		((?:^|\s);[^\n]+)                	; Comments
-		|(^\s*\/\*.+?\n\s*\*\/)      	; Multiline comments
-		|((?:^|\s)#[^ \t\r\n,]+)      	; Directives
+		|(^\s*\/\*.+?\n\s*\*\/)         	; Multiline comments
+		|((?:^|\s)#[^ \t\r\n,]+)         	; Directives
 		|([+*!~&\/\\<>^|=?:
 			,().```%{}\[\]\-]+)           	; Punctuation
-		|\b(0x[0-9a-fA-F]+|[0-9]+) 	; Numbers
-		|(""[^""\r\n]*"")                    	; Strings
-		|\b(A_\w*|" Builtins ")\b        	; A_Builtins
-		|\b(" Flow ")\b                      	; Flow
-		|\b(" Commands ")\b            	; Commands
+		|\b(0x[0-9a-fA-F]+|[0-9]+)      	; Numbers
+		|(""[^""\r\n]*"")                 	; Strings
+		|\b(A_\w*|" Builtins ")\b       	; A_Builtins
+		|\b(" Flow ")\b                   	; Flow
+		|\b(" Commands ")\b              	; Commands
 		|\b(" Functions ")\b              	; Functions (builtin)
 		|\b(" Keynames ")\b             	; Keynames
 		|\b(" Keywords ")\b              	; Other keywords
-		|(([a-zA-Z_$]+)(?=\())       	; Functions
-		|(-\*.*\*-)                          	; Description
+		|(([a-zA-Z_$]+)(?=\())           	; Functions
+		|(-\*.*\*-)                       	; Description
 		|^(https?://|www\.)[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(/\S*)?$        	; Link
 	)"
 

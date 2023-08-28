@@ -3,26 +3,33 @@
 
 
 
-<div align="center" style="color:#1e2327"><h5>Original code from fishgeek / modified last on 23.06.2023 (V1.45) from Ixiko</h5></div>
+<div align="center" style="color:#1e2327"><h5>Original code from fishgeek / modified last on 28.08.2023 (V1.46) from Ixiko</h5></div>
 <div align="center" style="color:#000000"><h4>Original text from fischgeek's repository</h4></div>
 <div align="center"> Remember that bit of code you wrote, but can't remember exactly where you wrote it?<br>
 Try using this tool to target a directory and search for a keyword inside of your code files.</div><br>
-
-
 <div align="center"><h4>AHK-CodeSearch I have made for <a href="https://github.com/Ixiko/AHK-libs-and-classes-collection">[AHK-libs-and-classes-collection]</a></h4></div>
 
 <div align="center"><img src="assets/Screenshot-062023.png" alt="modified original AHK-CodeSearch Screenshot - Ixiko"></div>
 
-#### ***<u>You still find bugs? Do you think there is still room for improvement? Then you are more than right!</u>***
+#### *Autohotkey no longer enjoys my main attention, but I have yet to find anything better for finding program code on my computers than Fishgeek's codesearch program.  Other programs certainly achieve greater speed, but the foundation Fishgeek has laid and the ease with which further code highlighting can be integrated are unique.  The nicest thing is how few resources an AHK script consumes in contrast to e.g. Python, and just copying the entire Codesearch directory is enough to run the code.*
+
+### ***<u>You still find bugs? Do you think there is still room for improvement? Then you are more than right!</u>***
 
 
 
-## VERSION HISTORY
+# VERSION HISTORY
+
+### V1.46
+
+- Now you can enter a list of directories in which to search. The script determines the file endings contained in each directory. This allows you to include or exclude certain directories for the search to speed up the search.
+- Empty chars like a 'c' or 'D' without anything else will be interpreted as device letter
+- Highlighting for Python language and .ini files added
+- additional file types can be entered and will included in search
 
 ### V1.45
 
 - Displaying line numbers
-- The colours of the rest of the gui have been adapted to the codestyle
+- The gui colours have been adapted to the codestyle
 - Fixed incorrect behaviour when resizing the Treeview and RichCode controls
 
 ### V1.44		

@@ -1,33 +1,33 @@
 ﻿GenHighlighterCache(Settings) {
-	
+
 	if Settings.HasKey("Cache")
 		return
 	Cache := Settings.Cache := {}
-	
-	
+
+
 	; --- Process Colors ---
 	Cache.Colors := Settings.Colors.Clone()
-	
+
 	; Inherit from the Settings array's base
 	BaseSettings := Settings
 	while (BaseSettings := BaseSettings.Base)
 		for Name, Color in BaseSettings.Colors
 			if !Cache.Colors.HasKey(Name)
 				Cache.Colors[Name] := Color
-	
+
 	; Include the color of plain text
 	if !Cache.Colors.HasKey("Plain")
 		Cache.Colors.Plain := Settings.FGColor
-	
+
 	; Create a Name->Index map of the colors
 	Cache.ColorMap := {}
 	for Name, Color in Cache.Colors
 		Cache.ColorMap[Name] := A_Index
-	
-	
+
+
 	; --- Generate the RTF headers ---
 	RTF := "{\urtf"
-	
+
 	; Color Table
 	RTF .= "{\colortbl;"
 	for Name, Color in Cache.Colors
@@ -37,10 +37,9 @@
 		RTF .= "\blue"  Color     & 0xFF ";"
 	}
 	RTF .= "}"
-	
+
 	; Font Table
-	if Settings.Font
-	{
+	if Settings.Font	{
 		FontTable .= "{\fonttbl{\f0\fmodern\fcharset0 "
 		FontTable .= Settings.Font.Typeface
 		FontTable .= ";}}"
@@ -48,24 +47,24 @@
 		if Settings.Font.Bold
 			RTF .= "\b"
 	}
-	
+
 	; Tab size (twips)
 	RTF .= "\deftab" GetCharWidthTwips(Settings.Font) * Settings.TabSize
-	
+
 	Cache.RTFHeader := RTF
 }
 
 GetCharWidthTwips(Font) {
 	static Cache := {}
-	
+
 	if Cache.HasKey(Font.Typeface "_" Font.Size "_" Font.Bold)
 		return Cache[Font.Typeface "_" font.Size "_" Font.Bold]
-	
+
 	; Calculate parameters of CreateFont
 	Height := -Round(Font.Size*A_ScreenDPI/72)
 	Weight := 400+300*(!!Font.Bold)
 	Face := Font.Typeface
-	
+
 	; Get the width of "x"
 	hDC := DllCall("GetDC", "UPtr", 0)
 	hFont := DllCall("CreateFont"
@@ -90,7 +89,7 @@ GetCharWidthTwips(Font) {
 	DllCall("SelectObject", "UPtr", hDC, "UPtr", hObj, "UPtr")
 	DllCall("DeleteObject", "UPtr", hFont)
 	DllCall("ReleaseDC", "UPtr", 0, "UPtr", hDC)
-	
+
 	; Convert to twpis
 	Twips := Round(NumGet(SIZE, 0, "UInt")*1440/A_ScreenDPI)
 	Cache[Font.Typeface "_" Font.Size "_" Font.Bold] := Twips
