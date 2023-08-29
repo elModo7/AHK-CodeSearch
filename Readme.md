@@ -3,15 +3,15 @@
 
 
 
-<div align="center" style="color:#1e2327"><h5>Original code from fishgeek / modified last on 28.08.2023 (V1.46) from Ixiko</h5></div>
+<div align="center" style="color:#1e2327"><h5>Original code from fishgeek / modified last on 29.08.2023 (V1.5alpha) from Ixiko</h5></div>
 <div align="center" style="color:#000000"><h4>Original text from fischgeek's repository</h4></div>
 <div align="center"> Remember that bit of code you wrote, but can't remember exactly where you wrote it?<br>
 Try using this tool to target a directory and search for a keyword inside of your code files.</div><br>
 <div align="center"><h4>AHK-CodeSearch I have made for <a href="https://github.com/Ixiko/AHK-libs-and-classes-collection">[AHK-libs-and-classes-collection]</a></h4></div>
 
-<div align="center"><img src="assets/Screenshot-062023.png" alt="modified original AHK-CodeSearch Screenshot - Ixiko"></div>
+<div align="center"><img src="assets/Screenshot-082023.png" alt="modified original AHK-CodeSearch Screenshot - Ixiko"></div>
 
-#### *Autohotkey no longer enjoys my main attention, but I have yet to find anything better for finding program code on my computers than Fishgeek's codesearch program.  Other programs certainly achieve greater speed, but the foundation Fishgeek has laid and the ease with which further code highlighting can be integrated are unique.  The nicest thing is how few resources an AHK script consumes in contrast to e.g. Python, and just copying the entire Codesearch directory is enough to run the code.*
+#### I haven’t yet to find anything better for finding program code on my computers than Fishgeek's codesearch program.  Other programs certainly achieve greater speed, but the foundation Fishgeek has laid and the ease with which further code highlighting can be integrated are unique.  The nicest thing is how few resources an AHK script consumes in contrast to e.g. Python, and just copying the entire Codesearch directory is enough to run the code on any other client.
 
 ### ***<u>You still find bugs? Do you think there is still room for improvement? Then you are more than right!</u>***
 
@@ -19,12 +19,15 @@ Try using this tool to target a directory and search for a keyword inside of you
 
 # VERSION HISTORY
 
-### V1.46
+### V1.5 (alpha) 
 
-- Now you can enter a list of directories in which to search. The script determines the file endings contained in each directory. This allows you to include or exclude certain directories for the search to speed up the search.
-- Empty chars like a 'c' or 'D' without anything else will be interpreted as device letter
-- Highlighting for Python language and .ini files added
+I have made a lot of changes. Not all functions are adapted to the changes, so there is still some work to be done before this version is fully functional.
+
+- You can enter a list of directories in which to search. The script determines the file endings contained in each directory. This allows you to include or exclude certain directories for the search to speed up the search.
+- all directories are checked for their existence before they are taken over
+- Highlighting for Python and Ruby language and .ini files added 
 - additional file types can be entered and will included in search
+- your checked filetypes will be saved at gui close, as well as the directory list
 
 ### V1.45
 
