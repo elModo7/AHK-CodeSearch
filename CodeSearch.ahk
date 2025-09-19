@@ -670,7 +670,7 @@ btnSearch_Check:                      ;{                                        
 	addExtensions	:= getAdditionalExtensions()
 	searchPaths  	:= GetSearchPaths()
 
-	if (txtSearchString && (ftypeChecked || addExtensions) && searchPaths.Count())
+	if (txtSearchString && (ftypesChecked || addExtensions) && searchPaths.Count())
 		GuiControl, Enable, btnSearch
 	else
 		GuiControl, Disable, btnSearch
@@ -2070,6 +2070,7 @@ SelectFolderEx(StartingFolder:="", Prompt:="", OwnerHwnd:=0, OkBtnLabel:="", com
 #Include %A_ScriptDir%\Classes\class_WinEvents.ahk
 #Include %A_ScriptDir%\Classes\class_cJSON.ahk
 #Include %A_ScriptDir%\Includes\SciTEOutput.ahk
+
 
 
 
